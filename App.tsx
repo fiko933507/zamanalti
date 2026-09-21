@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { PlaceDetailScreen } from './src/screens/PlaceDetailScreen';
 import { DeepModeScreen } from './src/screens/DeepModeScreen';
@@ -97,10 +101,16 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.app}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-      {ready ? renderScreen() : <LaunchScreen />}
-    </SafeAreaView>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <SafeAreaView style={styles.app} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={COLORS.background}
+          translucent={false}
+        />
+        {ready ? renderScreen() : <LaunchScreen />}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
