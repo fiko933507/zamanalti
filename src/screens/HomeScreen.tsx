@@ -1,15 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { FeatureCard } from '../components/FeatureCard';
 import { TimeRadar } from '../components/TimeRadar';
 import { PLACES, type Place } from '../data/places';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { distanceKm, formatDistance } from '../utils/geo';
 import { COLORS, RADII } from '../theme';
 
 type FeatureKey = 'hidden' | 'nearby' | 'route' | 'deep';
@@ -23,19 +26,19 @@ type Props = {
 const FEATURE_COPY: Record<FeatureKey, { title: string; body: string }> = {
   hidden: {
     title: 'Gizli Katman',
-    body: 'Bulunduğun mekânın görünmeyen dönemlerini üst üste aç. Her katman farklı bir tarih, insan ve hikâye gösterir.',
+    body: 'Seçtiğin mekânın doğrulanmış tarih katmanlarını aç. Her dönem, kaynaklı bir anlatı ve ayrı zaman çizgisiyle gösterilir.',
   },
   nearby: {
     title: 'Yakındaki İzler',
-    body: 'Yakınındaki yapı, sokak ve nesnelerde saklı anlatıları keşfet. Mesafe yerine hikâye yoğunluğuna göre ilerle.',
+    body: 'Konum izni verirsen listedeki mekânların gerçek kuş uçuşu mesafesini hesaplar ve en yakındaki tarih katmanını öne çıkarır.',
   },
   route: {
     title: 'Hafıza Rotası',
-    body: 'Bir şehri bugünkü sokaklardan değil; geçmişte yaşanmış olaylar, kişiler ve anılar üzerinden dolaş.',
+    body: 'Bir mekândan diğerine geçerken kronoloji yerine hikâye bağlantılarını takip et. İlk sürüm İstanbul koleksiyonuyla başlıyor.',
   },
   deep: {
     title: 'Derin Mod',
-    body: 'Kısa bilgi kartları yerine uzun anlatımlar, sesli gezi ve birbirine bağlanan zaman çizgileriyle mekâna daha derinden gir.',
+    body: 'Kaynaklı metinlerden hazırlanan bölümleri Türkçe sesli anlatımla dinle; dönem bilgisi anlatımla birlikte değişsin.',
   },
 };
 
@@ -69,30 +72,81 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
   const [selectedPlaceId, setSelectedPlaceId] = useState(PLACES[0]!.id);
   const [activeFeature, setActiveFeature] = useState<FeatureKey>('hidden');
   const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const { coordinate, cityLabel, state: locationState, requestLocation } =
+    useUserLocation();
 
   const selectedPlace = useMemo(
     () => PLACES.find((item) => item.id === selectedPlaceId) ?? PLACES[0]!,
     [selectedPlaceId],
   );
 
+  const selectedDistance = useMemo(() => {
+    if (!coordinate) return null;
+    return distanceKm(coordinate, selectedPlace.coordinates);
+  }, [coordinate, selectedPlace]);
+
+  const searchResults = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('tr-TR');
+    if (!normalized) return PLACES;
+
+    return PLACES.filter((place) =>
+      `${place.name} ${place.district} ${place.city}`
+        .toLocaleLowerCase('tr-TR')
+        .includes(normalized),
+    );
+  }, [query]);
+
+  useEffect(() => {
+    if (!coordinate || activeFeature !== 'nearby') return;
+
+    const nearest = [...PLACES].sort(
+      (a, b) =>
+        distanceKm(coordinate, a.coordinates) -
+        distanceKm(coordinate, b.coordinates),
+    )[0];
+
+    if (nearest) {
+      setSelectedPlaceId(nearest.id);
+      setSelectedLayerIndex(0);
+    }
+  }, [activeFeature, coordinate]);
+
   const choosePlace = (id: string) => {
     setSelectedPlaceId(id);
     setSelectedLayerIndex(0);
   };
 
+  const activateNearby = () => {
+    setActiveFeature('nearby');
+    void requestLocation();
+  };
+
+  const locationText =
+    locationState === 'loading'
+      ? 'Konum alınıyor'
+      : cityLabel;
+
   return (
     <View style={styles.root}>
-      <View style={styles.blueAmbient} />
-      <View style={styles.orangeAmbient} />
+      <View style={styles.blueAmbient} pointerEvents="none" />
+      <View style={styles.orangeAmbient} pointerEvents="none" />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
         <View style={styles.header}>
-          <Pressable style={styles.locationPill}>
+          <Pressable
+            style={styles.locationPill}
+            onPress={() => void requestLocation()}
+          >
             <Text style={styles.locationIcon}>⌖</Text>
-            <Text style={styles.locationText}>İstanbul</Text>
-            <Text style={styles.locationChevron}>⌄</Text>
+            <Text numberOfLines={1} style={styles.locationText}>
+              {locationText}
+            </Text>
           </Pressable>
 
           <View style={styles.brand}>
@@ -105,24 +159,75 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
             </Text>
           </View>
 
-          <Pressable style={styles.searchButton}>
-            <Text style={styles.searchIcon}>⌕</Text>
+          <Pressable
+            style={[styles.searchButton, searchOpen && styles.searchButtonActive]}
+            onPress={() => {
+              setSearchOpen((value) => !value);
+              setQuery('');
+            }}
+          >
+            <Text style={styles.searchIcon}>{searchOpen ? '×' : '⌕'}</Text>
           </Pressable>
         </View>
 
+        {searchOpen && (
+          <View style={styles.searchPanel}>
+            <TextInput
+              autoFocus
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Mekân ara: Galata, Ayasofya..."
+              placeholderTextColor="#53636D"
+              style={styles.searchInput}
+            />
+            <View style={styles.searchResults}>
+              {searchResults.map((place) => {
+                const km = coordinate
+                  ? distanceKm(coordinate, place.coordinates)
+                  : null;
+
+                return (
+                  <Pressable
+                    key={place.id}
+                    style={styles.searchResult}
+                    onPress={() => {
+                      choosePlace(place.id);
+                      setSearchOpen(false);
+                      setQuery('');
+                    }}
+                  >
+                    <View style={styles.searchResultGlyph}>
+                      <Text style={styles.searchResultGlyphText}>{place.glyph}</Text>
+                    </View>
+                    <View style={styles.searchResultCopy}>
+                      <Text style={styles.searchResultTitle}>{place.name}</Text>
+                      <Text style={styles.searchResultMeta}>
+                        {place.district}
+                        {km !== null ? ` · ${formatDistance(km)}` : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.searchResultArrow}>→</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         <View style={styles.heroCopy}>
-          <Text style={styles.kicker}>AYNI ŞEHİR · BAŞKA ZAMANLAR</Text>
+          <Text style={styles.kicker}>İSTANBUL KOLEKSİYONU · GERÇEK KAYNAKLAR</Text>
           <Text style={styles.heroTitle}>
-            ŞİMDİ{'\\n'}
+            ŞİMDİ{'\n'}
             <Text style={styles.heroAccent}>KEŞFET</Text>
           </Text>
           <Text style={styles.heroBody}>
-            Şehri yalnızca bulunduğun yerde değil, zamanın katmanlarında keşfet.
+            Gerçek bir mekân seç; farklı dönemleri, kaynakları ve sesli anlatıyı
+            tek deneyim içinde aç.
           </Text>
         </View>
 
         <View style={styles.radarShell}>
-          <View style={styles.radarHalo} />
+          <View style={styles.radarHalo} pointerEvents="none" />
           <TimeRadar
             size={radarSize}
             places={PLACES}
@@ -131,7 +236,7 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
           />
           <View style={styles.radarCaptionRow}>
             <Text style={styles.radarCaption}>ZAMAN HARİTASI</Text>
-            <Text style={styles.radarMeta}>4 aktif iz</Text>
+            <Text style={styles.radarMeta}>{PLACES.length} doğrulanmış mekân</Text>
           </View>
         </View>
 
@@ -143,10 +248,16 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
             <View style={styles.placeCopy}>
               <Text style={styles.placeName}>{selectedPlace.name}</Text>
               <Text style={styles.placeMeta}>
-                {selectedPlace.district} · {selectedPlace.distance}
+                {selectedPlace.district}
+                {selectedDistance !== null
+                  ? ` · ${formatDistance(selectedDistance)}`
+                  : ' · mesafe için konuma dokun'}
               </Text>
             </View>
-            <Pressable style={styles.enterButton} onPress={() => onOpenPlace(selectedPlace)}>
+            <Pressable
+              style={styles.enterButton}
+              onPress={() => onOpenPlace(selectedPlace)}
+            >
               <Text style={styles.enterButtonText}>AÇ</Text>
             </Pressable>
           </View>
@@ -179,9 +290,30 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
 
         <View style={styles.layerPreview}>
           <View style={styles.layerTimeline}>
-            <View style={styles.timelineGlow} />
-            <View style={styles.timelineDot} />
+            <View
+              style={[
+                styles.timelineGlow,
+                {
+                  width: `${Math.max(
+                    18,
+                    ((selectedLayerIndex + 1) / selectedPlace.layers.length) * 100,
+                  )}%`,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.timelineDot,
+                {
+                  left: `${Math.min(
+                    96,
+                    ((selectedLayerIndex + 1) / selectedPlace.layers.length) * 100,
+                  )}%`,
+                },
+              ]}
+            />
           </View>
+
           <View style={styles.layerPreviewCopy}>
             <Text style={styles.layerPreviewYear}>
               {selectedPlace.layers[selectedLayerIndex]?.year}
@@ -190,13 +322,16 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
               {selectedPlace.layers[selectedLayerIndex]?.label}
             </Text>
             <Text style={styles.layerPreviewBody}>
-              Bu katmanda mekânın mimarisi, insanları, olayları ve bugüne kalan
-              izleri tek anlatı içinde açılacak.
+              {selectedPlace.layers[selectedLayerIndex]?.body}
             </Text>
           </View>
-          <Pressable style={styles.listenButton} onPress={() => onOpenDeep(selectedPlace)}>
+
+          <Pressable
+            style={styles.listenButton}
+            onPress={() => onOpenDeep(selectedPlace)}
+          >
             <Text style={styles.listenIcon}>▶</Text>
-            <Text style={styles.listenText}>Sesli katmanı başlat</Text>
+            <Text style={styles.listenText}>Gerçek anlatımı dinle</Text>
           </Pressable>
         </View>
 
@@ -210,7 +345,7 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
         <View style={styles.featureGrid}>
           <FeatureCard
             title="Gizli Katman"
-            subtitle="Görünmeyeni keşfet"
+            subtitle="Kaynaklı geçmişi aç"
             icon="◉"
             tone="blue"
             active={activeFeature === 'hidden'}
@@ -218,15 +353,15 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
           />
           <FeatureCard
             title="Yakındaki İzler"
-            subtitle="Etrafındaki hikâyeler"
+            subtitle="Gerçek mesafeyi hesapla"
             icon="⌖"
             tone="lime"
             active={activeFeature === 'nearby'}
-            onPress={() => setActiveFeature('nearby')}
+            onPress={activateNearby}
           />
           <FeatureCard
             title="Hafıza Rotası"
-            subtitle="Zamanın içinde yolculuk"
+            subtitle="Hikâyeler arasında ilerle"
             icon="⌁"
             tone="orange"
             active={activeFeature === 'route'}
@@ -234,7 +369,7 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
           />
           <FeatureCard
             title="Derin Mod"
-            subtitle="Şehri başka bir gözle gör"
+            subtitle="Türkçe sesli anlatım"
             icon="◇"
             tone="cyan"
             active={activeFeature === 'deep'}
@@ -247,24 +382,43 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
             <Text style={styles.featureDetailLabel}>AKTİF DENEYİM</Text>
             <View style={styles.liveBadge}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>CANLI</Text>
+              <Text style={styles.liveText}>ÇALIŞIYOR</Text>
             </View>
           </View>
+
           <Text style={styles.featureDetailTitle}>
             {FEATURE_COPY[activeFeature].title}
           </Text>
           <Text style={styles.featureDetailBody}>
             {FEATURE_COPY[activeFeature].body}
           </Text>
+
+          {activeFeature === 'nearby' && locationState === 'denied' && (
+            <Text style={styles.permissionHint}>
+              Konum izni verilmedi. İstersen üstteki konum alanına dokunup tekrar
+              deneyebilirsin.
+            </Text>
+          )}
+
           <Pressable
             style={styles.primaryAction}
-            onPress={() =>
-              activeFeature === 'deep'
-                ? onOpenDeep(selectedPlace)
-                : onOpenPlace(selectedPlace)
-            }
+            onPress={() => {
+              if (activeFeature === 'nearby') {
+                void requestLocation();
+                return;
+              }
+
+              if (activeFeature === 'deep') {
+                onOpenDeep(selectedPlace);
+                return;
+              }
+
+              onOpenPlace(selectedPlace);
+            }}
           >
-            <Text style={styles.primaryActionText}>DENEYİMİ AÇ</Text>
+            <Text style={styles.primaryActionText}>
+              {activeFeature === 'nearby' ? 'YAKINDAKİNİ BUL' : 'DENEYİMİ AÇ'}
+            </Text>
             <Text style={styles.primaryActionArrow}>→</Text>
           </Pressable>
         </View>
@@ -277,8 +431,8 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
             <Text style={styles.memoryEyebrow}>SENİN ZAMAN KATMANIN</Text>
             <Text style={styles.memoryTitle}>Bir anı bırak.</Text>
             <Text style={styles.memoryBody}>
-              Bir mekâna bugünden bir not, ses veya anı bırak; gelecekte yeniden
-              açılmak üzere zaman kapsülüne dönüştür.
+              Bir mekâna bugünden bir not bırak; açılma tarihini belirle ve
+              telefonunda kalıcı olarak sakla.
             </Text>
           </View>
           <Pressable style={styles.memoryAction} onPress={onOpenCapsule}>
@@ -287,7 +441,7 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
         </View>
 
         <Text style={styles.footerText}>
-          ZAMANALTI · MEKÂN · ZAMAN · İNSAN · HİKÂYE
+          ZAMANALTI · MEKÂN · ZAMAN · İNSAN · KAYNAK
         </Text>
       </ScrollView>
     </View>
@@ -321,23 +475,24 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 54,
+    paddingTop: 6,
+    paddingBottom: 34,
   },
   header: {
-    minHeight: 64,
+    minHeight: 62,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   locationPill: {
-    minWidth: 96,
+    maxWidth: 126,
+    minWidth: 94,
     height: 38,
     borderRadius: RADII.pill,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -347,18 +502,14 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   locationText: {
+    flexShrink: 1,
     color: COLORS.text,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-  },
-  locationChevron: {
-    color: COLORS.muted,
-    fontSize: 14,
-    marginLeft: 5,
-    marginTop: -2,
   },
   brand: {
     alignItems: 'center',
+    paddingHorizontal: 5,
   },
   brandMark: {
     width: 26,
@@ -385,7 +536,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '900',
     fontSize: 10,
-    letterSpacing: 2.5,
+    letterSpacing: 2.2,
   },
   brandAccent: {
     color: COLORS.lime,
@@ -400,24 +551,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  searchButtonActive: {
+    borderColor: COLORS.lime,
+  },
   searchIcon: {
     color: COLORS.text,
     fontSize: 22,
     marginTop: -2,
   },
+  searchPanel: {
+    marginTop: 6,
+    padding: 12,
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: '#050A0E',
+  },
+  searchInput: {
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(67,215,255,0.28)',
+    color: COLORS.text,
+    paddingHorizontal: 14,
+    fontSize: 13,
+  },
+  searchResults: {
+    marginTop: 8,
+  },
+  searchResult: {
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.white08,
+  },
+  searchResultGlyph: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: COLORS.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchResultGlyphText: {
+    color: COLORS.cyan,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  searchResultCopy: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+  searchResultTitle: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  searchResultMeta: {
+    color: COLORS.muted,
+    fontSize: 9,
+    marginTop: 3,
+  },
+  searchResultArrow: {
+    color: COLORS.lime,
+    fontSize: 16,
+  },
   heroCopy: {
-    paddingTop: 26,
+    paddingTop: 24,
     paddingBottom: 8,
   },
   kicker: {
     color: COLORS.muted,
-    fontSize: 10,
-    letterSpacing: 2,
+    fontSize: 9,
+    letterSpacing: 1.6,
     fontWeight: '700',
   },
   heroTitle: {
     color: COLORS.text,
-    fontSize: 44,
+    fontSize: 43,
     lineHeight: 42,
     fontWeight: '900',
     letterSpacing: -1.6,
@@ -428,7 +642,7 @@ const styles = StyleSheet.create({
   },
   heroBody: {
     color: COLORS.muted,
-    maxWidth: 310,
+    maxWidth: 330,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 12,
@@ -468,7 +682,7 @@ const styles = StyleSheet.create({
   radarMeta: {
     color: COLORS.lime,
     fontSize: 9,
-    letterSpacing: 1,
+    letterSpacing: 0.7,
     fontWeight: '700',
   },
   placeFocus: {
@@ -509,7 +723,7 @@ const styles = StyleSheet.create({
   },
   placeMeta: {
     color: COLORS.muted,
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 3,
   },
   enterButton: {
@@ -560,7 +774,8 @@ const styles = StyleSheet.create({
     paddingRight: 18,
   },
   eraChip: {
-    width: 132,
+    width: 142,
+    minHeight: 60,
     paddingHorizontal: 13,
     paddingVertical: 11,
     marginRight: 9,
@@ -604,21 +819,20 @@ const styles = StyleSheet.create({
   },
   timelineGlow: {
     height: 3,
-    width: '48%',
     borderRadius: 2,
     backgroundColor: COLORS.cyan,
   },
   timelineDot: {
     position: 'absolute',
-    left: '46%',
     top: -4,
     width: 11,
     height: 11,
     borderRadius: 6,
+    marginLeft: -6,
     backgroundColor: COLORS.lime,
   },
   layerPreviewCopy: {
-    paddingRight: 6,
+    paddingRight: 4,
   },
   layerPreviewYear: {
     color: COLORS.orange,
@@ -640,8 +854,9 @@ const styles = StyleSheet.create({
   },
   listenButton: {
     marginTop: 16,
-    height: 44,
-    borderRadius: 22,
+    minHeight: 46,
+    borderRadius: 23,
+    paddingHorizontal: 14,
     backgroundColor: 'rgba(23,109,255,0.15)',
     borderWidth: 1,
     borderColor: COLORS.blue,
@@ -718,9 +933,15 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 8,
   },
+  permissionHint: {
+    color: COLORS.orange,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 10,
+  },
   primaryAction: {
     marginTop: 18,
-    height: 48,
+    minHeight: 48,
     borderRadius: 24,
     backgroundColor: COLORS.lime,
     paddingHorizontal: 18,
