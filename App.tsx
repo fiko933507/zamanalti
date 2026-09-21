@@ -88,14 +88,22 @@ export default function App() {
     }
 
     if (screen === 'capsule') {
-      return <TimeCapsuleScreen onBack={() => setScreen('home')} />;
+      return (
+        <TimeCapsuleScreen
+          place={selectedPlace}
+          onBack={() => setScreen('home')}
+        />
+      );
     }
 
     return (
       <HomeScreen
         onOpenPlace={openPlace}
         onOpenDeep={openDeep}
-        onOpenCapsule={() => setScreen('capsule')}
+        onOpenCapsule={(place) => {
+          setSelectedPlace(place);
+          setScreen('capsule');
+        }}
       />
     );
   };
