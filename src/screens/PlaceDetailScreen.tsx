@@ -1,5 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import type { Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
 
@@ -10,16 +18,23 @@ type Props = {
 };
 
 export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
+  const { width } = useWindowDimensions();
+  const portalSize = Math.min(width - 40, 330);
   const [activeLayer, setActiveLayer] = useState(0);
+
   const layer = useMemo(
     () => place.layers[activeLayer] ?? place.layers[0]!,
     [activeLayer, place.layers],
   );
 
+  const openSource = (url: string) => {
+    void Linking.openURL(url);
+  };
+
   return (
     <View style={styles.root}>
-      <View style={styles.blueGlow} />
-      <View style={styles.orangeGlow} />
+      <View style={styles.blueGlow} pointerEvents="none" />
+      <View style={styles.orangeGlow} pointerEvents="none" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -37,15 +52,49 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
             <Text style={styles.brandSub}>MEKÂN KATMANI</Text>
           </View>
 
-          <View style={styles.circleButton}>
-            <Text style={styles.more}>•••</Text>
-          </View>
+          <Pressable
+            style={styles.sourceButton}
+            onPress={() => {
+              const first = place.sources[0];
+              if (first) openSource(first.url);
+            }}
+          >
+            <Text style={styles.sourceButtonText}>KAYNAK</Text>
+          </Pressable>
         </View>
 
-        <View style={styles.portal}>
-          <View style={styles.portalRingA} />
-          <View style={styles.portalRingB} />
-          <View style={styles.portalRingC} />
+        <View style={[styles.portal, { height: portalSize }]}>
+          <View
+            style={[
+              styles.portalRingA,
+              {
+                width: portalSize * 0.9,
+                height: portalSize * 0.9,
+                borderRadius: portalSize,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.portalRingB,
+              {
+                width: portalSize * 0.7,
+                height: portalSize * 0.7,
+                borderRadius: portalSize,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.portalRingC,
+              {
+                width: portalSize * 0.5,
+                height: portalSize * 0.5,
+                borderRadius: portalSize,
+              },
+            ]}
+          />
+
           <View style={styles.portalCore}>
             <Text style={styles.portalGlyph}>{place.glyph}</Text>
           </View>
@@ -77,7 +126,7 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
 
         <Text style={styles.placeName}>{place.name}</Text>
         <Text style={styles.placeMeta}>
-          {place.district} · {place.distance}
+          {place.district} · {place.city}
         </Text>
         <Text style={styles.placeHook}>{place.hook}</Text>
 
@@ -87,32 +136,65 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
           <Text style={styles.layerTitle}>{layer.label}</Text>
 
           <View style={styles.signal}>
-            <View style={styles.signalFill} />
-            <View style={styles.signalDot} />
+            <View
+              style={[
+                styles.signalFill,
+                {
+                  width: `${((activeLayer + 1) / place.layers.length) * 100}%`,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.signalDot,
+                {
+                  left: `${Math.min(
+                    96,
+                    ((activeLayer + 1) / place.layers.length) * 100,
+                  )}%`,
+                },
+              ]}
+            />
           </View>
 
-          <Text style={styles.layerBody}>
-            Bu ekran, kullanıcıyı yalnızca bilgi okumaya değil mekânın dönemleri
-            arasında gezinmeye davet eder. Mimari değişimler, insan hikâyeleri,
-            günlük hayat ve bugüne kalan izler tek bir zaman akışında açılır.
-          </Text>
+          <Text style={styles.layerBody}>{layer.body}</Text>
 
           <View style={styles.statsRow}>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>4</Text>
+              <Text style={styles.statValue}>{place.layers.length}</Text>
               <Text style={styles.statLabel}>ZAMAN KATMANI</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>30+</Text>
-              <Text style={styles.statLabel}>DK DERİN GEZİ</Text>
+              <Text style={styles.statValue}>{place.chapters.length}</Text>
+              <Text style={styles.statLabel}>SESLİ BÖLÜM</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>∞</Text>
-              <Text style={styles.statLabel}>BAĞLANTI</Text>
+              <Text style={styles.statValue}>✓</Text>
+              <Text style={styles.statLabel}>KAYNAKLI</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.summaryPanel}>
+          <Text style={styles.summaryEyebrow}>MEKÂNIN ÖZETİ</Text>
+          <Text style={styles.summaryText}>{place.summary}</Text>
+        </View>
+
+        <Text style={styles.sectionLabel}>DOĞRULANMIŞ TEMEL BİLGİLER</Text>
+
+        <View style={styles.factList}>
+          {place.facts.map((fact, index) => (
+            <View key={fact} style={styles.factRow}>
+              <View style={styles.factIndex}>
+                <Text style={styles.factIndexText}>
+                  {String(index + 1).padStart(2, '0')}
+                </Text>
+              </View>
+              <Text style={styles.factText}>{fact}</Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.sectionLabel}>BU MEKÂNI NASIL KEŞFETMEK İSTERSİN?</Text>
@@ -125,8 +207,8 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
             <Text style={styles.modeKicker}>DERİN MOD</Text>
             <Text style={styles.modeTitle}>Mekânın içine gir</Text>
             <Text style={styles.modeBody}>
-              Uzun sesli anlatım, dönemler arası akış ve ekrandaki canlı zaman
-              çizgisi birlikte ilerler.
+              {place.chapters.length} bölümlük Türkçe sesli anlatımı başlat;
+              zaman katmanları anlatımla birlikte ilerlesin.
             </Text>
           </View>
           <Text style={styles.modeArrow}>→</Text>
@@ -135,25 +217,46 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
         <View style={styles.splitRow}>
           <View style={styles.smallCard}>
             <Text style={styles.smallAccent}>İZLER</Text>
-            <Text style={styles.smallTitle}>Bugünde kalanlar</Text>
+            <Text style={styles.smallTitle}>Dönemleri karşılaştır</Text>
             <Text style={styles.smallBody}>
-              Geçmişten bugüne taşınan detayları bul.
+              Üstteki tarih düğmelerine dokunarak aynı mekânın farklı
+              dönemlerdeki anlamını karşılaştır.
             </Text>
           </View>
           <View style={styles.smallCard}>
-            <Text style={[styles.smallAccent, styles.orangeText]}>İNSANLAR</Text>
-            <Text style={styles.smallTitle}>Kimler geçti?</Text>
+            <Text style={[styles.smallAccent, styles.orangeText]}>KAYNAKLAR</Text>
+            <Text style={styles.smallTitle}>{place.sources.length} doğrulama noktası</Text>
             <Text style={styles.smallBody}>
-              Mekânla yolu kesişen yaşamları gör.
+              Uygulamadaki tarihsel içerik resmî kurum ve UNESCO kaynaklarıyla
+              ilişkilidir.
             </Text>
           </View>
         </View>
 
-        <View style={styles.quotePanel}>
-          <Text style={styles.quoteMark}>“</Text>
-          <Text style={styles.quote}>
-            Aynı yerin içinde birden fazla zaman yaşar. ZAMANALTI onları tek
-            ekranda görünür kılar.
+        <Text style={styles.sectionLabel}>KAYNAKLAR</Text>
+
+        <View style={styles.sources}>
+          {place.sources.map((source) => (
+            <Pressable
+              key={source.url}
+              style={styles.sourceCard}
+              onPress={() => openSource(source.url)}
+            >
+              <View style={styles.sourceMark}>
+                <Text style={styles.sourceMarkText}>↗</Text>
+              </View>
+              <Text style={styles.sourceTitle}>{source.label}</Text>
+              <Text style={styles.sourceArrow}>›</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.notePanel}>
+          <Text style={styles.noteTitle}>Kaynak notu</Text>
+          <Text style={styles.noteBody}>
+            Tarihsel özetler kaynakların sadeleştirilmiş anlatımıdır. Ziyaret
+            saatleri, biletler ve erişim kuralları değişebileceği için güncel
+            ziyaret bilgisi için kaynak bağlantısını kontrol et.
           </Text>
         </View>
       </ScrollView>
@@ -163,7 +266,7 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 50 },
+  content: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 38 },
   blueGlow: {
     position: 'absolute',
     width: 320,
@@ -185,7 +288,7 @@ const styles = StyleSheet.create({
     top: 450,
   },
   topRow: {
-    minHeight: 62,
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -201,7 +304,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   back: { color: COLORS.text, fontSize: 30, marginTop: -4 },
-  more: { color: COLORS.text, fontSize: 15, letterSpacing: 2 },
+  sourceButton: {
+    minWidth: 62,
+    height: 36,
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(203,255,0,0.38)',
+    backgroundColor: 'rgba(203,255,0,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sourceButtonText: {
+    color: COLORS.lime,
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
   brandBlock: { alignItems: 'center' },
   brand: {
     color: COLORS.text,
@@ -218,24 +337,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   portal: {
-    height: 330,
-    marginTop: 10,
+    marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   portalRingA: {
     position: 'absolute',
-    width: 296,
-    height: 296,
-    borderRadius: 148,
     borderWidth: 1,
     borderColor: 'rgba(67,215,255,0.18)',
   },
   portalRingB: {
     position: 'absolute',
-    width: 232,
-    height: 232,
-    borderRadius: 116,
     borderWidth: 1,
     borderColor: 'rgba(203,255,0,0.34)',
     borderStyle: 'dashed',
@@ -243,9 +356,6 @@ const styles = StyleSheet.create({
   },
   portalRingC: {
     position: 'absolute',
-    width: 164,
-    height: 164,
-    borderRadius: 82,
     borderWidth: 1,
     borderColor: 'rgba(255,106,0,0.35)',
   },
@@ -270,10 +380,10 @@ const styles = StyleSheet.create({
   },
   orbitNode: {
     position: 'absolute',
-    minWidth: 58,
-    height: 32,
+    minWidth: 62,
+    height: 34,
     paddingHorizontal: 10,
-    borderRadius: 16,
+    borderRadius: 17,
     backgroundColor: '#061017',
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -286,10 +396,10 @@ const styles = StyleSheet.create({
   },
   orbitYear: { color: COLORS.muted, fontSize: 10, fontWeight: '800' },
   orbitYearActive: { color: COLORS.lime },
-  nodeOne: { top: 36, left: 24 },
-  nodeTwo: { top: 58, right: 18 },
-  nodeThree: { bottom: 54, left: 14 },
-  nodeFour: { bottom: 38, right: 34 },
+  nodeOne: { top: '9%', left: '5%' },
+  nodeTwo: { top: '18%', right: '4%' },
+  nodeThree: { bottom: '18%', left: '1%' },
+  nodeFour: { bottom: '10%', right: '7%' },
   placeName: {
     color: COLORS.text,
     fontSize: 38,
@@ -305,11 +415,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   placeHook: {
-    color: COLORS.muted,
+    color: '#B4C0C7',
     fontSize: 13,
     lineHeight: 20,
     marginTop: 11,
-    maxWidth: 340,
+    maxWidth: 360,
   },
   activeLayerPanel: {
     marginTop: 22,
@@ -340,24 +450,24 @@ const styles = StyleSheet.create({
   },
   signal: {
     height: 3,
-    borderRadius: 2,
     backgroundColor: '#13232D',
+    borderRadius: 2,
     marginTop: 18,
     marginBottom: 17,
+    overflow: 'visible',
   },
   signalFill: {
-    width: '58%',
     height: 3,
     borderRadius: 2,
     backgroundColor: COLORS.cyan,
   },
   signalDot: {
     position: 'absolute',
-    left: '56%',
     top: -4,
     width: 11,
     height: 11,
     borderRadius: 6,
+    marginLeft: -6,
     backgroundColor: COLORS.lime,
   },
   layerBody: {
@@ -378,7 +488,7 @@ const styles = StyleSheet.create({
   statLabel: {
     color: COLORS.muted,
     fontSize: 7,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     marginTop: 5,
     textAlign: 'center',
   },
@@ -387,6 +497,26 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: COLORS.white12,
   },
+  summaryPanel: {
+    marginTop: 12,
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: '#05090C',
+    padding: 17,
+  },
+  summaryEyebrow: {
+    color: COLORS.cyan,
+    fontSize: 8,
+    letterSpacing: 1.7,
+    fontWeight: '900',
+  },
+  summaryText: {
+    color: '#B4C0C7',
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 9,
+  },
   sectionLabel: {
     color: COLORS.muted,
     fontSize: 9,
@@ -394,6 +524,41 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     marginTop: 28,
     marginBottom: 12,
+  },
+  factList: {
+    gap: 8,
+  },
+  factRow: {
+    minHeight: 62,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: '#05090C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+  },
+  factIndex: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: COLORS.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  factIndexText: {
+    color: COLORS.lime,
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  factText: {
+    flex: 1,
+    color: '#B9C4C9',
+    fontSize: 11,
+    lineHeight: 17,
+    paddingLeft: 11,
   },
   modeCard: {
     borderRadius: RADII.lg,
@@ -442,7 +607,7 @@ const styles = StyleSheet.create({
   },
   smallCard: {
     width: '48.5%',
-    minHeight: 132,
+    minHeight: 142,
     borderRadius: RADII.md,
     backgroundColor: '#080D10',
     borderWidth: 1,
@@ -468,25 +633,64 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginTop: 7,
   },
-  quotePanel: {
-    marginTop: 22,
-    minHeight: 132,
-    borderRadius: RADII.lg,
+  sources: {
+    gap: 8,
+  },
+  sourceCard: {
+    minHeight: 64,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: '#040709',
-    padding: 20,
+    backgroundColor: '#05090D',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
-  quoteMark: {
-    color: COLORS.orange,
-    fontSize: 42,
-    lineHeight: 38,
+  sourceMark: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(67,215,255,0.08)',
+    borderWidth: 1,
+    borderColor: COLORS.cyan,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sourceMarkText: {
+    color: COLORS.cyan,
+    fontSize: 16,
     fontWeight: '900',
   },
-  quote: {
-    color: '#B9C4C9',
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: -6,
+  sourceTitle: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
+    paddingHorizontal: 11,
+  },
+  sourceArrow: {
+    color: COLORS.muted,
+    fontSize: 22,
+  },
+  notePanel: {
+    marginTop: 18,
+    borderRadius: RADII.md,
+    padding: 16,
+    backgroundColor: 'rgba(255,106,0,0.045)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.2)',
+  },
+  noteTitle: {
+    color: COLORS.orange,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  noteBody: {
+    color: COLORS.muted,
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 7,
   },
 });
