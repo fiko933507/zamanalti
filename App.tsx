@@ -14,10 +14,11 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { PlaceDetailScreen } from './src/screens/PlaceDetailScreen';
 import { DeepModeScreen } from './src/screens/DeepModeScreen';
 import { TimeCapsuleScreen } from './src/screens/TimeCapsuleScreen';
+import { RouteScreen } from './src/screens/RouteScreen';
 import { PLACES, type Place } from './src/data/places';
 import { COLORS } from './src/theme';
 
-type AppScreen = 'home' | 'place' | 'deep' | 'capsule';
+type AppScreen = 'home' | 'place' | 'deep' | 'capsule' | 'route';
 
 function LaunchScreen() {
   return (
@@ -96,6 +97,15 @@ export default function App() {
       );
     }
 
+    if (screen === 'route') {
+      return (
+        <RouteScreen
+          onBack={() => setScreen('home')}
+          onOpenPlace={openPlace}
+        />
+      );
+    }
+
     return (
       <HomeScreen
         onOpenPlace={openPlace}
@@ -104,6 +114,7 @@ export default function App() {
           setSelectedPlace(place);
           setScreen('capsule');
         }}
+        onOpenRoute={() => setScreen('route')}
       />
     );
   };
