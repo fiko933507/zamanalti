@@ -9,12 +9,24 @@
     "android": {
       "package": "com.zamanalti.app",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.zamanalti.app",
       "buildNumber": "1",
       "supportsTablet": true
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ZAMANALTI, yakınındaki tarih katmanlarını göstermek için konumunu yalnızca uygulamayı kullanırken ister."
+        }
+      ]
+    ]
   }
 }
