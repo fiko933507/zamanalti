@@ -1,0 +1,65 @@
+# ZAMANALTI
+
+ZAMANALTI, gerçek mekânları zaman katmanları üzerinden keşfetmeye odaklanan mobil deneyimdir.
+
+## Tasarım yönü
+
+Seçilen arayüz, Concept 4 yaklaşımını temel alır:
+
+- siyah / gece mavisi ana zemin
+- elektrik mavi ve turuncu atmosfer ışıkları
+- neon lime vurgu rengi
+- dairesel “zaman radarı”
+- klasik alt tab bar yok
+- navigasyon ve eylemler ekran içindeki deneyim kartlarına gömülü
+- güçlü tipografi, yüksek kontrast ve sinematik keşif hissi
+
+## Ürün çekirdeği
+
+İlk sürümde hedeflenen ana deneyimler:
+
+1. **Zaman Haritası** — gerçek mekânları klasik harita pinleri yerine zaman ağı/radar biçiminde keşfetmek.
+2. **Gizli Katman** — aynı mekânın farklı tarihsel dönemlerini üst üste açmak.
+3. **Yakındaki İzler** — kullanıcının çevresindeki görünmeyen hikâyeleri bulmak.
+4. **Hafıza Rotası** — bir şehri olaylar, insanlar ve anılar üzerinden gezmek.
+5. **Derin Mod** — uzun anlatımlar ve sesli gezi deneyimleri.
+6. **Zaman Defteri** — ziyaret edilen yerleri ve kişisel keşifleri saklamak.
+7. **Geleceğe Bırak** — bir mekâna gelecekte açılacak not, ses veya anı bırakmak.
+
+## İlk kodlanan ekran
+
+Şu anda ana ekranın çalışan görsel iskeleti hazırdır:
+
+- açılış/splash deneyimi
+- ZAMANALTI marka dili
+- İstanbul zaman radarı
+- seçilebilir örnek mekânlar
+- seçilebilir zaman katmanları
+- ekran içine gömülü deneyim kartları
+- seçilen deneyimin detay paneli
+- “Geleceğe Bırak” alanı
+
+İçerik şu aşamada örnek/veri modeli seviyesindedir; tarihsel metinler ve medya içerikleri yayın öncesi kaynaklandırılacaktır.
+
+## Çalıştırma
+
+Node.js 22.13+ önerilir.
+
+```bash
+npm install
+npx expo install --fix
+npm run typecheck
+npm start
+```
+
+Android yerel geliştirme:
+
+```bash
+npm run android
+```
+
+APK önizleme:
+
+```bash
+npx eas-cli build -p android --profile preview
+```
