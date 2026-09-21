@@ -7,7 +7,13 @@ import {
   View,
 } from 'react-native';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { PlaceDetailScreen } from './src/screens/PlaceDetailScreen';
+import { DeepModeScreen } from './src/screens/DeepModeScreen';
+import { TimeCapsuleScreen } from './src/screens/TimeCapsuleScreen';
+import { PLACES, type Place } from './src/data/places';
 import { COLORS } from './src/theme';
+
+type AppScreen = 'home' | 'place' | 'deep' | 'capsule';
 
 function LaunchScreen() {
   return (
@@ -39,16 +45,61 @@ function LaunchScreen() {
 
 export default function App() {
   const [ready, setReady] = useState(false);
+  const [screen, setScreen] = useState<AppScreen>('home');
+  const [selectedPlace, setSelectedPlace] = useState<Place>(PLACES[0]!);
 
   useEffect(() => {
     const timer = setTimeout(() => setReady(true), 1450);
     return () => clearTimeout(timer);
   }, []);
 
+  const openPlace = (place: Place) => {
+    setSelectedPlace(place);
+    setScreen('place');
+  };
+
+  const openDeep = (place: Place) => {
+    setSelectedPlace(place);
+    setScreen('deep');
+  };
+
+  const renderScreen = () => {
+    if (screen === 'place') {
+      return (
+        <PlaceDetailScreen
+          place={selectedPlace}
+          onBack={() => setScreen('home')}
+          onOpenDeep={openDeep}
+        />
+      );
+    }
+
+    if (screen === 'deep') {
+      return (
+        <DeepModeScreen
+          place={selectedPlace}
+          onBack={() => setScreen('place')}
+        />
+      );
+    }
+
+    if (screen === 'capsule') {
+      return <TimeCapsuleScreen onBack={() => setScreen('home')} />;
+    }
+
+    return (
+      <HomeScreen
+        onOpenPlace={openPlace}
+        onOpenDeep={openDeep}
+        onOpenCapsule={() => setScreen('capsule')}
+      />
+    );
+  };
+
   return (
     <SafeAreaView style={styles.app}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-      {ready ? <HomeScreen /> : <LaunchScreen />}
+      {ready ? renderScreen() : <LaunchScreen />}
     </SafeAreaView>
   );
 }
