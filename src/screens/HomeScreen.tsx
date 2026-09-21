@@ -21,6 +21,7 @@ type Props = {
   onOpenPlace: (place: Place) => void;
   onOpenDeep: (place: Place) => void;
   onOpenCapsule: (place: Place) => void;
+  onOpenRoute: () => void;
 };
 
 const FEATURE_COPY: Record<FeatureKey, { title: string; body: string }> = {
@@ -66,7 +67,12 @@ function EraChip({
   );
 }
 
-export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
+export function HomeScreen({
+  onOpenPlace,
+  onOpenDeep,
+  onOpenCapsule,
+  onOpenRoute,
+}: Props) {
   const { width } = useWindowDimensions();
   const radarSize = Math.min(width - 36, 390);
   const [selectedPlaceId, setSelectedPlaceId] = useState(PLACES[0]!.id);
@@ -410,6 +416,11 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
 
               if (activeFeature === 'deep') {
                 onOpenDeep(selectedPlace);
+                return;
+              }
+
+              if (activeFeature === 'route') {
+                onOpenRoute();
                 return;
               }
 
