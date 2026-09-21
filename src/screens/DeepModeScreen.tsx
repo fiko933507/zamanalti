@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Speech from 'expo-speech';
 import type { Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
 
@@ -8,40 +9,98 @@ type Props = {
   onBack: () => void;
 };
 
-const CHAPTERS = [
-  { title: 'Önce mekânı dinle', minutes: '00:00–06:30' },
-  { title: 'İlk katmanın kurulması', minutes: '06:30–14:00' },
-  { title: 'İnsanlar ve gündelik hayat', minutes: '14:00–22:30' },
-  { title: 'Dönüşüm anı', minutes: '22:30–29:00' },
-  { title: 'Bugüne kalan izler', minutes: '29:00–36:00' },
-];
-
 export function DeepModeScreen({ place, onBack }: Props) {
   const [playing, setPlaying] = useState(false);
   const [chapter, setChapter] = useState(0);
 
-  const progress = useMemo(() => 18 + chapter * 17, [chapter]);
+  const currentChapter = place.chapters[chapter] ?? place.chapters[0]!;
+  const currentLayer =
+    place.layers[Math.min(chapter, place.layers.length - 1)] ?? place.layers[0]!;
+
+  const progress = useMemo(
+    () => ((chapter + 1) / Math.max(1, place.chapters.length)) * 100,
+    [chapter, place.chapters.length],
+  );
+
+  useEffect(() => {
+    return () => {
+      void Speech.stop();
+    };
+  }, []);
+
+  const stopSpeech = async () => {
+    await Speech.stop();
+    setPlaying(false);
+  };
+
+  const startSpeech = async () => {
+    await Speech.stop();
+    setPlaying(true);
+
+    Speech.speak(
+      `${place.name}. ${currentChapter.title}. ${currentChapter.body}`,
+      {
+        language: 'tr-TR',
+        rate: 0.88,
+        pitch: 1.0,
+        onDone: () => setPlaying(false),
+        onStopped: () => setPlaying(false),
+        onError: () => setPlaying(false),
+      },
+    );
+  };
+
+  const toggleSpeech = () => {
+    if (playing) {
+      void stopSpeech();
+    } else {
+      void startSpeech();
+    }
+  };
+
+  const selectChapter = (index: number) => {
+    void Speech.stop();
+    setPlaying(false);
+    setChapter(index);
+  };
+
+  const previousChapter = () => {
+    selectChapter(Math.max(0, chapter - 1));
+  };
+
+  const nextChapter = () => {
+    selectChapter(Math.min(place.chapters.length - 1, chapter + 1));
+  };
 
   return (
     <View style={styles.root}>
-      <View style={styles.blueGlow} />
+      <View style={styles.blueGlow} pointerEvents="none" />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         <View style={styles.topRow}>
-          <Pressable onPress={onBack} style={styles.backButton}>
+          <Pressable
+            onPress={() => {
+              void Speech.stop();
+              onBack();
+            }}
+            style={styles.backButton}
+          >
             <Text style={styles.back}>‹</Text>
           </Pressable>
+
           <View style={styles.titleBlock}>
             <Text style={styles.brand}>
               ZAMAN<Text style={styles.brandAccent}>ALTI</Text>
             </Text>
-            <Text style={styles.modeName}>DERİN MOD</Text>
+            <Text style={styles.modeName}>DERİN MOD · SESLİ ANLATIM</Text>
           </View>
+
           <View style={styles.livePill}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>CANLI</Text>
+            <View style={[styles.liveDot, playing && styles.liveDotActive]} />
+            <Text style={styles.liveText}>{playing ? 'SES AÇIK' : 'HAZIR'}</Text>
           </View>
         </View>
 
@@ -49,84 +108,96 @@ export function DeepModeScreen({ place, onBack }: Props) {
           <View style={styles.stageRingOuter} />
           <View style={styles.stageRingMiddle} />
           <View style={styles.stageRingInner} />
-          <View style={styles.stageCore}>
+          <View style={[styles.stageCore, playing && styles.stageCorePlaying]}>
             <Text style={styles.stageGlyph}>{place.glyph}</Text>
           </View>
           <View style={styles.stageSignalA} />
           <View style={styles.stageSignalB} />
         </View>
 
-        <Text style={styles.eyebrow}>36 DAKİKALIK SESLİ YOLCULUK</Text>
+        <Text style={styles.eyebrow}>
+          {place.chapters.length} BÖLÜMLÜK KAYNAKLI ANLATIM
+        </Text>
         <Text style={styles.placeName}>{place.name}</Text>
         <Text style={styles.subtitle}>
-          Ekrana bakmak zorunda olmadığın; mekânın içinde yürürken ses,
-          zaman çizgisi ve bağlamsal ipuçlarının birlikte ilerlediği anlatı.
+          Telefonunun Türkçe metin-okuma sesini kullanır. Bölümü seç, oynat ve
+          gerçek mekâna bakarak dinle.
         </Text>
 
         <View style={styles.player}>
           <View style={styles.progressTop}>
-            <Text style={styles.time}>06:42</Text>
-            <Text style={styles.time}>36:00</Text>
+            <Text style={styles.progressLabel}>
+              BÖLÜM {chapter + 1}/{place.chapters.length}
+            </Text>
+            <Text style={styles.progressLabel}>{Math.round(progress)}%</Text>
           </View>
 
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            <View style={[styles.progressDot, { left: `${Math.min(progress, 94)}%` }]} />
+            <View
+              style={[
+                styles.progressDot,
+                { left: `${Math.min(progress, 96)}%` },
+              ]}
+            />
           </View>
 
           <View style={styles.controls}>
             <Pressable
-              style={styles.sideControl}
-              onPress={() => setChapter((value) => Math.max(0, value - 1))}
+              disabled={chapter === 0}
+              style={[
+                styles.sideControl,
+                chapter === 0 && styles.controlDisabled,
+              ]}
+              onPress={previousChapter}
             >
-              <Text style={styles.sideControlText}>−15</Text>
+              <Text style={styles.sideControlText}>‹</Text>
+              <Text style={styles.sideControlLabel}>ÖNCEKİ</Text>
             </Pressable>
 
-            <Pressable
-              onPress={() => setPlaying((value) => !value)}
-              style={styles.playButton}
-            >
+            <Pressable onPress={toggleSpeech} style={styles.playButton}>
               <Text style={styles.playIcon}>{playing ? 'Ⅱ' : '▶'}</Text>
             </Pressable>
 
             <Pressable
-              style={styles.sideControl}
-              onPress={() =>
-                setChapter((value) => Math.min(CHAPTERS.length - 1, value + 1))
-              }
+              disabled={chapter === place.chapters.length - 1}
+              style={[
+                styles.sideControl,
+                chapter === place.chapters.length - 1 &&
+                  styles.controlDisabled,
+              ]}
+              onPress={nextChapter}
             >
-              <Text style={styles.sideControlText}>+15</Text>
+              <Text style={styles.sideControlText}>›</Text>
+              <Text style={styles.sideControlLabel}>SONRAKİ</Text>
             </Pressable>
           </View>
 
-          <Text style={styles.nowLabel}>ŞİMDİ DİNLİYORSUN</Text>
-          <Text style={styles.nowTitle}>{CHAPTERS[chapter]?.title}</Text>
+          <Text style={styles.nowLabel}>
+            {playing ? 'ŞİMDİ DİNLİYORSUN' : 'SEÇİLİ BÖLÜM'}
+          </Text>
+          <Text style={styles.nowTitle}>{currentChapter.title}</Text>
+          <Text style={styles.nowBody}>{currentChapter.body}</Text>
         </View>
 
         <View style={styles.contextStrip}>
           <View style={styles.contextOrb}>
-            <Text style={styles.contextOrbText}>
-              {place.layers[Math.min(chapter, place.layers.length - 1)]?.year}
-            </Text>
+            <Text style={styles.contextOrbText}>{currentLayer.year}</Text>
           </View>
           <View style={styles.contextCopy}>
-            <Text style={styles.contextKicker}>EKRAN, SESİ TAKİP EDİYOR</Text>
-            <Text style={styles.contextTitle}>
-              {place.layers[Math.min(chapter, place.layers.length - 1)]?.label}
-            </Text>
-            <Text style={styles.contextBody}>
-              Dinlediğin bölüm ilerledikçe ekrandaki dönem, işaretler ve
-              bağlantılar otomatik olarak değişir.
-            </Text>
+            <Text style={styles.contextKicker}>ZAMAN BAĞLAMI</Text>
+            <Text style={styles.contextTitle}>{currentLayer.label}</Text>
+            <Text style={styles.contextBody}>{currentLayer.body}</Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle}>Bölümler</Text>
+
         <View style={styles.chapterList}>
-          {CHAPTERS.map((item, index) => (
+          {place.chapters.map((item, index) => (
             <Pressable
               key={item.title}
-              onPress={() => setChapter(index)}
+              onPress={() => selectChapter(index)}
               style={[
                 styles.chapter,
                 index === chapter && styles.chapterActive,
@@ -147,28 +218,35 @@ export function DeepModeScreen({ place, onBack }: Props) {
                   {String(index + 1).padStart(2, '0')}
                 </Text>
               </View>
+
               <View style={styles.chapterCopy}>
                 <Text style={styles.chapterTitle}>{item.title}</Text>
-                <Text style={styles.chapterTime}>{item.minutes}</Text>
+                <Text numberOfLines={2} style={styles.chapterPreview}>
+                  {item.body}
+                </Text>
               </View>
+
               <Text
                 style={[
                   styles.chapterArrow,
                   index === chapter && styles.chapterArrowActive,
                 ]}
               >
-                →
+                {index === chapter && playing ? 'Ⅱ' : '→'}
               </Text>
             </Pressable>
           ))}
         </View>
 
         <View style={styles.noScreenPanel}>
-          <Text style={styles.noScreenKicker}>CEBİNDE DE ÇALIŞIR</Text>
-          <Text style={styles.noScreenTitle}>Ekranı kapat. Yürümeye devam et.</Text>
+          <Text style={styles.noScreenKicker}>GERÇEK MEKÂNA BAK</Text>
+          <Text style={styles.noScreenTitle}>
+            Telefonu elinde tutmak zorunda değilsin.
+          </Text>
           <Text style={styles.noScreenBody}>
-            Derin Modun hedefi telefona baktırmak değil, kullanıcının gerçek
-            mekâna bakmasını sağlamaktır. Sesli anlatım arka planda devam eder.
+            Anlatım başladıktan sonra ekranı aşağı indirip çevrene bakabilirsin.
+            Bu prototip sistem metin-okuma kullanır; sonraki üretim aşamasında
+            insan sesli kayıtları aynı bölüm yapısına bağlanabilir.
           </Text>
         </View>
       </ScrollView>
@@ -178,7 +256,7 @@ export function DeepModeScreen({ place, onBack }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 48 },
+  content: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 38 },
   blueGlow: {
     position: 'absolute',
     width: 380,
@@ -190,7 +268,7 @@ const styles = StyleSheet.create({
     right: -210,
   },
   topRow: {
-    minHeight: 62,
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -206,7 +284,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   back: { color: COLORS.text, fontSize: 30, marginTop: -4 },
-  titleBlock: { alignItems: 'center' },
+  titleBlock: { alignItems: 'center', flexShrink: 1, paddingHorizontal: 6 },
   brand: {
     color: COLORS.text,
     fontSize: 12,
@@ -218,80 +296,90 @@ const styles = StyleSheet.create({
     color: COLORS.cyan,
     fontSize: 7,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
     marginTop: 4,
   },
   livePill: {
+    minWidth: 60,
     height: 32,
     borderRadius: 16,
-    paddingHorizontal: 11,
+    paddingHorizontal: 9,
     backgroundColor: 'rgba(203,255,0,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(203,255,0,0.22)',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.lime,
+    backgroundColor: COLORS.muted,
     marginRight: 6,
+  },
+  liveDotActive: {
+    backgroundColor: COLORS.lime,
   },
   liveText: {
     color: COLORS.lime,
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.7,
   },
   stage: {
-    height: 320,
+    height: 280,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
   stageRingOuter: {
     position: 'absolute',
-    width: 284,
-    height: 284,
-    borderRadius: 142,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
     borderWidth: 1,
     borderColor: 'rgba(67,215,255,0.18)',
   },
   stageRingMiddle: {
     position: 'absolute',
-    width: 216,
-    height: 216,
-    borderRadius: 108,
+    width: 194,
+    height: 194,
+    borderRadius: 97,
     borderWidth: 1,
     borderColor: 'rgba(203,255,0,0.35)',
     borderStyle: 'dashed',
   },
   stageRingInner: {
     position: 'absolute',
-    width: 146,
-    height: 146,
-    borderRadius: 73,
+    width: 136,
+    height: 136,
+    borderRadius: 68,
     borderWidth: 1,
     borderColor: 'rgba(255,106,0,0.32)',
   },
   stageCore: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: '#050B0F',
     borderWidth: 2,
     borderColor: COLORS.lime,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: COLORS.lime,
-    shadowOpacity: 0.6,
-    shadowRadius: 22,
-    elevation: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  stageCorePlaying: {
+    shadowOpacity: 0.8,
+    shadowRadius: 28,
+    elevation: 14,
   },
   stageGlyph: {
     color: COLORS.lime,
-    fontSize: 39,
+    fontSize: 38,
     fontWeight: '900',
   },
   stageSignalA: {
@@ -300,8 +388,8 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.cyan,
-    top: 72,
-    right: 76,
+    top: 62,
+    right: 80,
   },
   stageSignalB: {
     position: 'absolute',
@@ -309,18 +397,19 @@ const styles = StyleSheet.create({
     height: 11,
     borderRadius: 6,
     backgroundColor: COLORS.orange,
-    bottom: 68,
-    left: 58,
+    bottom: 58,
+    left: 64,
   },
   eyebrow: {
     color: COLORS.lime,
     fontSize: 9,
-    letterSpacing: 2,
+    letterSpacing: 1.7,
     fontWeight: '900',
   },
   placeName: {
     color: COLORS.text,
-    fontSize: 38,
+    fontSize: 36,
+    lineHeight: 40,
     fontWeight: '900',
     letterSpacing: -1.2,
     marginTop: 7,
@@ -330,12 +419,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     marginTop: 10,
-    maxWidth: 350,
+    maxWidth: 360,
   },
   player: {
     marginTop: 24,
     borderRadius: 30,
-    padding: 20,
+    padding: 18,
     backgroundColor: '#071018',
     borderWidth: 1,
     borderColor: 'rgba(67,215,255,0.28)',
@@ -344,7 +433,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  time: { color: COLORS.muted, fontSize: 9, fontWeight: '700' },
+  progressLabel: {
+    color: COLORS.muted,
+    fontSize: 8,
+    letterSpacing: 0.8,
+    fontWeight: '800',
+  },
   progressTrack: {
     height: 4,
     borderRadius: 2,
@@ -367,30 +461,41 @@ const styles = StyleSheet.create({
     marginLeft: -7,
   },
   controls: {
-    marginTop: 25,
+    marginTop: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sideControl: {
-    width: 52,
+    width: 66,
     height: 52,
     borderRadius: 26,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 18,
+    marginHorizontal: 12,
+  },
+  controlDisabled: {
+    opacity: 0.25,
   },
   sideControlText: {
+    color: COLORS.text,
+    fontSize: 20,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  sideControlLabel: {
     color: COLORS.muted,
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 6,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginTop: 2,
   },
   playButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: COLORS.lime,
     alignItems: 'center',
     justifyContent: 'center',
@@ -399,7 +504,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  playIcon: { color: '#050700', fontSize: 26, fontWeight: '900' },
+  playIcon: { color: '#050700', fontSize: 25, fontWeight: '900' },
   nowLabel: {
     color: COLORS.cyan,
     fontSize: 8,
@@ -410,10 +515,17 @@ const styles = StyleSheet.create({
   },
   nowTitle: {
     color: COLORS.text,
-    fontSize: 17,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '900',
     textAlign: 'center',
     marginTop: 5,
+  },
+  nowBody: {
+    color: '#A5B2B9',
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 15,
   },
   contextStrip: {
     marginTop: 12,
@@ -437,7 +549,7 @@ const styles = StyleSheet.create({
   },
   contextOrbText: {
     color: COLORS.orange,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     textAlign: 'center',
   },
@@ -469,7 +581,7 @@ const styles = StyleSheet.create({
   },
   chapterList: { gap: 8 },
   chapter: {
-    minHeight: 72,
+    minHeight: 82,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -477,6 +589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 13,
+    paddingVertical: 10,
   },
   chapterActive: {
     borderColor: COLORS.lime,
@@ -500,7 +613,12 @@ const styles = StyleSheet.create({
   chapterIndexTextActive: { color: COLORS.lime },
   chapterCopy: { flex: 1, paddingHorizontal: 12 },
   chapterTitle: { color: COLORS.text, fontSize: 13, fontWeight: '800' },
-  chapterTime: { color: COLORS.muted, fontSize: 9, marginTop: 4 },
+  chapterPreview: {
+    color: COLORS.muted,
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 4,
+  },
   chapterArrow: { color: COLORS.muted, fontSize: 17 },
   chapterArrowActive: { color: COLORS.lime },
   noScreenPanel: {
