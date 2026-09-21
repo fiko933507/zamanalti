@@ -113,8 +113,7 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
         <View style={styles.heroCopy}>
           <Text style={styles.kicker}>AYNI ŞEHİR · BAŞKA ZAMANLAR</Text>
           <Text style={styles.heroTitle}>
-            ŞİMDİ{'
-'}
+            ŞİMDİ{'\\n'}
             <Text style={styles.heroAccent}>KEŞFET</Text>
           </Text>
           <Text style={styles.heroBody}>
