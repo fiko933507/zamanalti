@@ -20,7 +20,7 @@ type FeatureKey = 'hidden' | 'nearby' | 'route' | 'deep';
 type Props = {
   onOpenPlace: (place: Place) => void;
   onOpenDeep: (place: Place) => void;
-  onOpenCapsule: () => void;
+  onOpenCapsule: (place: Place) => void;
 };
 
 const FEATURE_COPY: Record<FeatureKey, { title: string; body: string }> = {
@@ -435,7 +435,7 @@ export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
               telefonunda kalıcı olarak sakla.
             </Text>
           </View>
-          <Pressable style={styles.memoryAction} onPress={onOpenCapsule}>
+          <Pressable style={styles.memoryAction} onPress={() => onOpenCapsule(selectedPlace)}>
             <Text style={styles.memoryActionText}>GELECEĞE BIRAK</Text>
           </Pressable>
         </View>
