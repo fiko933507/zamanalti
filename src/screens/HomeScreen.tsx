@@ -9,10 +9,16 @@ import {
 } from 'react-native';
 import { FeatureCard } from '../components/FeatureCard';
 import { TimeRadar } from '../components/TimeRadar';
-import { PLACES } from '../data/places';
+import { PLACES, type Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
 
 type FeatureKey = 'hidden' | 'nearby' | 'route' | 'deep';
+
+type Props = {
+  onOpenPlace: (place: Place) => void;
+  onOpenDeep: (place: Place) => void;
+  onOpenCapsule: () => void;
+};
 
 const FEATURE_COPY: Record<FeatureKey, { title: string; body: string }> = {
   hidden: {
@@ -57,7 +63,7 @@ function EraChip({
   );
 }
 
-export function HomeScreen() {
+export function HomeScreen({ onOpenPlace, onOpenDeep, onOpenCapsule }: Props) {
   const { width } = useWindowDimensions();
   const radarSize = Math.min(width - 36, 390);
   const [selectedPlaceId, setSelectedPlaceId] = useState(PLACES[0]!.id);
@@ -141,7 +147,7 @@ export function HomeScreen() {
                 {selectedPlace.district} · {selectedPlace.distance}
               </Text>
             </View>
-            <Pressable style={styles.enterButton}>
+            <Pressable style={styles.enterButton} onPress={() => onOpenPlace(selectedPlace)}>
               <Text style={styles.enterButtonText}>AÇ</Text>
             </Pressable>
           </View>
@@ -189,7 +195,7 @@ export function HomeScreen() {
               izleri tek anlatı içinde açılacak.
             </Text>
           </View>
-          <Pressable style={styles.listenButton}>
+          <Pressable style={styles.listenButton} onPress={() => onOpenDeep(selectedPlace)}>
             <Text style={styles.listenIcon}>▶</Text>
             <Text style={styles.listenText}>Sesli katmanı başlat</Text>
           </Pressable>
@@ -251,7 +257,14 @@ export function HomeScreen() {
           <Text style={styles.featureDetailBody}>
             {FEATURE_COPY[activeFeature].body}
           </Text>
-          <Pressable style={styles.primaryAction}>
+          <Pressable
+            style={styles.primaryAction}
+            onPress={() =>
+              activeFeature === 'deep'
+                ? onOpenDeep(selectedPlace)
+                : onOpenPlace(selectedPlace)
+            }
+          >
             <Text style={styles.primaryActionText}>DENEYİMİ AÇ</Text>
             <Text style={styles.primaryActionArrow}>→</Text>
           </Pressable>
@@ -269,7 +282,7 @@ export function HomeScreen() {
               açılmak üzere zaman kapsülüne dönüştür.
             </Text>
           </View>
-          <Pressable style={styles.memoryAction}>
+          <Pressable style={styles.memoryAction} onPress={onOpenCapsule}>
             <Text style={styles.memoryActionText}>GELECEĞE BIRAK</Text>
           </Pressable>
         </View>
