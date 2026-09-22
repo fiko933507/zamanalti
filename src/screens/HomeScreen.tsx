@@ -13,6 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeatureCard } from '../components/FeatureCard';
 import { TimeRadar } from '../components/TimeRadar';
 import { PLACES, type Place } from '../data/places';
+import {
+  getLayerVisual,
+  getLayerVisualKindLabel,
+  getLayerVisualUrl,
+} from '../data/layerVisuals';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { distanceKm, formatDistance } from '../utils/geo';
 import { COLORS, RADII } from '../theme';
@@ -143,6 +148,13 @@ export function HomeScreen({
 
   const selectedLayer =
     selectedPlace.layers[selectedLayerIndex] ?? selectedPlace.layers[0]!;
+  const selectedLayerVisual = getLayerVisual(
+    selectedPlace.id,
+    selectedLayer.year,
+  );
+  const selectedLayerVisualUrl = selectedLayerVisual
+    ? getLayerVisualUrl(selectedLayerVisual)
+    : selectedPlace.image.url;
 
   return (
     <View style={styles.root}>
@@ -329,6 +341,33 @@ export function HomeScreen({
         </ScrollView>
 
         <View style={styles.layerPreview}>
+          <ImageBackground
+            source={{ uri: selectedLayerVisualUrl }}
+            resizeMode="cover"
+            style={styles.layerVisual}
+            imageStyle={styles.layerVisualImage}
+          >
+            <View style={styles.layerVisualShade} />
+            <View style={styles.layerVisualTop}>
+              <Text style={styles.layerVisualKind}>
+                {selectedLayerVisual
+                  ? getLayerVisualKindLabel(selectedLayerVisual.kind)
+                  : 'GÜNCEL GÖRÜNÜM'}
+              </Text>
+              <Text style={styles.layerVisualYear}>{selectedLayer.year}</Text>
+            </View>
+            <View style={styles.layerVisualBottom}>
+              <Text numberOfLines={2} style={styles.layerVisualTitle}>
+                {selectedLayerVisual?.title ?? selectedPlace.name}
+              </Text>
+              {selectedLayerVisual && (
+                <Text numberOfLines={3} style={styles.layerVisualNote}>
+                  {selectedLayerVisual.note}
+                </Text>
+              )}
+            </View>
+          </ImageBackground>
+
           <View style={styles.layerTimeline}>
             <View
               style={[
@@ -928,6 +967,64 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 10,
     marginTop: 4,
+  },
+  layerVisual: {
+    height: 210,
+    marginBottom: 18,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.25)',
+    justifyContent: 'space-between',
+  },
+  layerVisualImage: {
+    borderRadius: 19,
+  },
+  layerVisualShade: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(2,5,8,0.46)',
+  },
+  layerVisualTop: {
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  layerVisualKind: {
+    color: COLORS.orange,
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1,
+    backgroundColor: 'rgba(2,5,8,0.76)',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  layerVisualYear: {
+    color: COLORS.lime,
+    fontSize: 10,
+    fontWeight: '900',
+    backgroundColor: 'rgba(2,5,8,0.76)',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  layerVisualBottom: {
+    padding: 13,
+  },
+  layerVisualTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  layerVisualNote: {
+    color: '#D1D8DB',
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 5,
   },
   layerPreview: {
     marginTop: 12,
