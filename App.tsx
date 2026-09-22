@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  LogBox,
+  Platform,
   StatusBar,
   StyleSheet,
   Text,
@@ -8,8 +8,8 @@ import {
 } from 'react-native';
 import {
   SafeAreaProvider,
-  SafeAreaView,
   initialWindowMetrics,
+  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { PlaceDetailScreen } from './src/screens/PlaceDetailScreen';
@@ -18,10 +18,6 @@ import { TimeCapsuleScreen } from './src/screens/TimeCapsuleScreen';
 import { RouteScreen } from './src/screens/RouteScreen';
 import { PLACES, type Place } from './src/data/places';
 import { COLORS } from './src/theme';
-
-LogBox.ignoreLogs([
-  'SafeAreaView has been deprecated',
-]);
 
 type AppScreen = 'home' | 'place' | 'deep' | 'capsule' | 'route';
 
@@ -53,13 +49,14 @@ function LaunchScreen() {
   );
 }
 
-export default function App() {
+function AppFrame() {
+  const insets = useSafeAreaInsets();
   const [ready, setReady] = useState(false);
   const [screen, setScreen] = useState<AppScreen>('home');
   const [selectedPlace, setSelectedPlace] = useState<Place>(PLACES[0]!);
 
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 1450);
+    const timer = setTimeout(() => setReady(true), 900);
     return () => clearTimeout(timer);
   }, []);
 
@@ -124,16 +121,27 @@ export default function App() {
     );
   };
 
+  const topInset =
+    Platform.OS === 'android'
+      ? Math.max(insets.top, StatusBar.currentHeight ?? 0) + 8
+      : insets.top + 6;
+
+  return (
+    <View style={[styles.app, { paddingTop: topInset }]}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.background}
+        translucent={false}
+      />
+      {ready ? renderScreen() : <LaunchScreen />}
+    </View>
+  );
+}
+
+export default function App() {
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      <SafeAreaView style={styles.app} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor={COLORS.background}
-          translucent={false}
-        />
-        {ready ? renderScreen() : <LaunchScreen />}
-      </SafeAreaView>
+      <AppFrame />
     </SafeAreaProvider>
   );
 }
