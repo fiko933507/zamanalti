@@ -10,6 +10,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Place } from '../data/places';
+import {
+  getLayerVisual,
+  getLayerVisualKindLabel,
+  getLayerVisualUrl,
+} from '../data/layerVisuals';
 import { COLORS, RADII } from '../theme';
 
 type Props = {
@@ -26,6 +31,17 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
     () => place.layers[activeLayer] ?? place.layers[0]!,
     [activeLayer, place.layers],
   );
+
+  const historicalVisual = getLayerVisual(place.id, layer.year);
+  const heroImageUrl = historicalVisual
+    ? getLayerVisualUrl(historicalVisual)
+    : place.image.url;
+  const heroSourceUrl = historicalVisual?.sourceUrl ?? place.image.sourceUrl;
+  const heroCredit = historicalVisual?.credit ?? place.image.credit;
+  const heroLicense = historicalVisual?.license ?? place.image.license;
+  const heroKind = historicalVisual
+    ? getLayerVisualKindLabel(historicalVisual.kind)
+    : 'GÜNCEL GÖRÜNÜM';
 
   const openSource = (url: string) => {
     void Linking.openURL(url);
@@ -67,7 +83,7 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
         </View>
 
         <ImageBackground
-          source={{ uri: place.image.url }}
+          source={{ uri: heroImageUrl }}
           resizeMode="cover"
           style={styles.heroImage}
           imageStyle={styles.heroImageInner}
@@ -75,7 +91,7 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
           <View style={styles.heroShade} />
           <View style={styles.heroTopRow}>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>GERÇEK MEKÂN</Text>
+              <Text style={styles.heroBadgeText}>{heroKind}</Text>
             </View>
             <View style={styles.heroYearBadge}>
               <Text style={styles.heroYear}>{layer.year}</Text>
@@ -91,16 +107,23 @@ export function PlaceDetailScreen({ place, onBack, onOpenDeep }: Props) {
               {place.hook}
             </Text>
             <Pressable
-              onPress={() => openSource(place.image.sourceUrl)}
+              onPress={() => openSource(heroSourceUrl)}
               style={styles.photoCreditButton}
             >
               <Text numberOfLines={1} style={styles.photoCredit}>
-                Fotoğraf: {place.image.credit} · {place.image.license}
+                {heroCredit} · {heroLicense}
               </Text>
               <Text style={styles.photoCreditArrow}>↗</Text>
             </Pressable>
           </View>
         </ImageBackground>
+
+        {historicalVisual && (
+          <View style={styles.visualContext}>
+            <Text style={styles.visualContextKicker}>{historicalVisual.title}</Text>
+            <Text style={styles.visualContextBody}>{historicalVisual.note}</Text>
+          </View>
+        )}
 
         <View style={styles.timeDialCard}>
           <Text style={styles.timeDialEyebrow}>ZAMAN DÜĞÜMÜ</Text>
@@ -442,6 +465,26 @@ const styles = StyleSheet.create({
     color: COLORS.cyan,
     fontSize: 10,
     marginLeft: 7,
+  },
+  visualContext: {
+    marginTop: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.24)',
+    backgroundColor: 'rgba(255,106,0,0.045)',
+    padding: 14,
+  },
+  visualContextKicker: {
+    color: COLORS.orange,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  visualContextBody: {
+    color: COLORS.muted,
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 6,
   },
   timeDialCard: {
     marginTop: 14,
