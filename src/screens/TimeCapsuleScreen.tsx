@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
 
@@ -48,6 +49,7 @@ const formatDate = (date: Date) =>
   }).format(date);
 
 export function TimeCapsuleScreen({ place, onBack }: Props) {
+  const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [unlockDate, setUnlockDate] = useState(tomorrow);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -161,7 +163,10 @@ export function TimeCapsuleScreen({ place, onBack }: Props) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(52, insets.bottom + 42) },
+        ]}
       >
         <View style={styles.topRow}>
           <Pressable onPress={onBack} style={styles.backButton}>
@@ -374,7 +379,7 @@ export function TimeCapsuleScreen({ place, onBack }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 38 },
+  content: { paddingHorizontal: 18, paddingTop: 4 },
   violetGlow: {
     position: 'absolute',
     width: 340,
