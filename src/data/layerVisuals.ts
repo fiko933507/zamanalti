@@ -85,15 +85,14 @@ export const LAYER_VISUALS: Record<string, LayerVisual> = {
     kind: 'archive',
   },
   [visualKey('ayasofya', '1935')]: {
-    fileName:
-      'Fonds Achille Dassonville (1890-1967) - Turquie - Istanbul - Vue de la salle de prière de la mosquée Ayasofya (MédiHAL 4158427).jpg',
-    title: 'Ayasofya, 1935',
+    fileName: 'Hagia Sophia. Fortepan 76187.jpg',
+    title: 'Ayasofya, 1937',
     note:
-      'Fotoğraf 1935 yılında çekildi. Yapının müze dönemine geçtiği yılın doğrudan tarihsel belgesidir.',
-    credit: 'Achille Dassonville / MédiHAL / Wikimedia Commons',
-    license: 'Archive photograph',
+      'Müze statüsünün başladığı 1935 katmanı için, iki yıl sonra çekilmiş 1937 tarihli arşiv fotoğrafı kullanılıyor.',
+    credit: 'FOTO:FORTEPAN / PRL / Wikimedia Commons',
+    license: 'CC BY-SA 3.0',
     sourceUrl:
-      'https://commons.wikimedia.org/wiki/File:Fonds_Achille_Dassonville_(1890-1967)_-_Turquie_-_Istanbul_-_Vue_de_la_salle_de_prière_de_la_mosquée_Ayasofya_(MédiHAL_4158427).jpg',
+      'https://commons.wikimedia.org/wiki/File:Hagia_Sophia._Fortepan_76187.jpg',
     kind: 'archive',
   },
   [visualKey('ayasofya', '2020')]: {
