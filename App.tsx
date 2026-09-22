@@ -16,10 +16,19 @@ import { PlaceDetailScreen } from './src/screens/PlaceDetailScreen';
 import { DeepModeScreen } from './src/screens/DeepModeScreen';
 import { TimeCapsuleScreen } from './src/screens/TimeCapsuleScreen';
 import { RouteScreen } from './src/screens/RouteScreen';
+import { NearbyScreen } from './src/screens/NearbyScreen';
+import { DreamScreen } from './src/screens/DreamScreen';
 import { PLACES, type Place } from './src/data/places';
 import { COLORS } from './src/theme';
 
-type AppScreen = 'home' | 'place' | 'deep' | 'capsule' | 'route';
+type AppScreen =
+  | 'home'
+  | 'place'
+  | 'deep'
+  | 'capsule'
+  | 'route'
+  | 'nearby'
+  | 'dream';
 
 function LaunchScreen() {
   return (
@@ -108,6 +117,19 @@ function AppFrame() {
       );
     }
 
+    if (screen === 'nearby') {
+      return (
+        <NearbyScreen
+          onBack={() => setScreen('home')}
+          onOpenPlace={openPlace}
+        />
+      );
+    }
+
+    if (screen === 'dream') {
+      return <DreamScreen onBack={() => setScreen('home')} />;
+    }
+
     return (
       <HomeScreen
         onOpenPlace={openPlace}
@@ -117,6 +139,8 @@ function AppFrame() {
           setScreen('capsule');
         }}
         onOpenRoute={() => setScreen('route')}
+        onOpenNearby={() => setScreen('nearby')}
+        onOpenDream={() => setScreen('dream')}
       />
     );
   };
