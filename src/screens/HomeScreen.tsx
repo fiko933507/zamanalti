@@ -747,7 +747,11 @@ const styles = StyleSheet.create({
     borderRadius: 27,
   },
   placeImageShade: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(1,4,7,0.52)',
   },
   placeImageTop: {
