@@ -426,7 +426,11 @@ const styles = StyleSheet.create({
     borderRadius: 29,
   },
   stageShade: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(0,4,8,0.58)',
   },
   stageRingOuter: {
