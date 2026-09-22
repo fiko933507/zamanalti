@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeatureCard } from '../components/FeatureCard';
 import { TimeRadar } from '../components/TimeRadar';
 import { PLACES, type Place } from '../data/places';
@@ -74,12 +76,15 @@ export function HomeScreen({
   onOpenRoute,
 }: Props) {
   const { width } = useWindowDimensions();
-  const radarSize = Math.min(width - 36, 390);
+  const insets = useSafeAreaInsets();
+  const radarSize = Math.min(width - 54, 338);
+
   const [selectedPlaceId, setSelectedPlaceId] = useState(PLACES[0]!.id);
   const [activeFeature, setActiveFeature] = useState<FeatureKey>('hidden');
   const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+
   const { coordinate, cityLabel, state: locationState, requestLocation } =
     useUserLocation();
 
@@ -130,9 +135,10 @@ export function HomeScreen({
   };
 
   const locationText =
-    locationState === 'loading'
-      ? 'Konum alınıyor'
-      : cityLabel;
+    locationState === 'loading' ? 'Konum alınıyor' : cityLabel;
+
+  const selectedLayer =
+    selectedPlace.layers[selectedLayerIndex] ?? selectedPlace.layers[0]!;
 
   return (
     <View style={styles.root}>
@@ -142,7 +148,10 @@ export function HomeScreen({
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(52, insets.bottom + 42) },
+        ]}
       >
         <View style={styles.header}>
           <Pressable
@@ -221,14 +230,14 @@ export function HomeScreen({
         )}
 
         <View style={styles.heroCopy}>
-          <Text style={styles.kicker}>İSTANBUL KOLEKSİYONU · GERÇEK KAYNAKLAR</Text>
-          <Text style={styles.heroTitle}>
-            ŞİMDİ{'\n'}
-            <Text style={styles.heroAccent}>KEŞFET</Text>
+          <Text style={styles.kicker}>İSTANBUL · GERÇEK MEKÂNLAR · KAYNAKLI HİKÂYELER</Text>
+          <Text style={styles.heroTitle}>ŞİMDİ</Text>
+          <Text style={[styles.heroTitle, styles.heroAccent, styles.heroTitleSecond]}>
+            KEŞFET
           </Text>
           <Text style={styles.heroBody}>
-            Gerçek bir mekân seç; farklı dönemleri, kaynakları ve sesli anlatıyı
-            tek deneyim içinde aç.
+            Şehri yalnızca bugünkü hâliyle değil, üst üste birikmiş zaman
+            katmanlarıyla keşfet.
           </Text>
         </View>
 
@@ -242,33 +251,54 @@ export function HomeScreen({
           />
           <View style={styles.radarCaptionRow}>
             <Text style={styles.radarCaption}>ZAMAN HARİTASI</Text>
-            <Text style={styles.radarMeta}>{PLACES.length} doğrulanmış mekân</Text>
+            <Text style={styles.radarMeta}>{PLACES.length} aktif iz</Text>
           </View>
         </View>
 
-        <View style={styles.placeFocus}>
-          <View style={styles.placeTitleRow}>
-            <View style={styles.placeMonogram}>
-              <Text style={styles.placeMonogramText}>{selectedPlace.glyph}</Text>
+        <Pressable
+          style={styles.placeImageCard}
+          onPress={() => onOpenPlace(selectedPlace)}
+        >
+          <ImageBackground
+            source={{ uri: selectedPlace.image.url }}
+            resizeMode="cover"
+            style={styles.placeImage}
+            imageStyle={styles.placeImageInner}
+          >
+            <View style={styles.placeImageShade} />
+            <View style={styles.placeImageTop}>
+              <View style={styles.realPhotoBadge}>
+                <Text style={styles.realPhotoBadgeText}>GERÇEK MEKÂN</Text>
+              </View>
+              <View style={styles.placeGlyphBadge}>
+                <Text style={styles.placeGlyphBadgeText}>{selectedPlace.glyph}</Text>
+              </View>
             </View>
-            <View style={styles.placeCopy}>
-              <Text style={styles.placeName}>{selectedPlace.name}</Text>
-              <Text style={styles.placeMeta}>
+
+            <View style={styles.placeImageBottom}>
+              <Text style={styles.placeImageName}>{selectedPlace.name}</Text>
+              <Text style={styles.placeImageMeta}>
                 {selectedPlace.district}
                 {selectedDistance !== null
                   ? ` · ${formatDistance(selectedDistance)}`
                   : ' · mesafe için konuma dokun'}
               </Text>
+              <Text numberOfLines={2} style={styles.placeImageHook}>
+                {selectedPlace.hook}
+              </Text>
+
+              <View style={styles.openRow}>
+                <Text numberOfLines={1} style={styles.photoCredit}>
+                  Fotoğraf: {selectedPlace.image.credit}
+                </Text>
+                <View style={styles.openButton}>
+                  <Text style={styles.openButtonText}>KATMANI AÇ</Text>
+                  <Text style={styles.openButtonArrow}>→</Text>
+                </View>
+              </View>
             </View>
-            <Pressable
-              style={styles.enterButton}
-              onPress={() => onOpenPlace(selectedPlace)}
-            >
-              <Text style={styles.enterButtonText}>AÇ</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.placeHook}>{selectedPlace.hook}</Text>
-        </View>
+          </ImageBackground>
+        </Pressable>
 
         <View style={styles.sectionHeader}>
           <View>
@@ -320,30 +350,28 @@ export function HomeScreen({
             />
           </View>
 
-          <View style={styles.layerPreviewCopy}>
-            <Text style={styles.layerPreviewYear}>
-              {selectedPlace.layers[selectedLayerIndex]?.year}
-            </Text>
-            <Text style={styles.layerPreviewTitle}>
-              {selectedPlace.layers[selectedLayerIndex]?.label}
-            </Text>
-            <Text style={styles.layerPreviewBody}>
-              {selectedPlace.layers[selectedLayerIndex]?.body}
-            </Text>
-          </View>
+          <Text style={styles.layerPreviewYear}>{selectedLayer.year}</Text>
+          <Text style={styles.layerPreviewTitle}>{selectedLayer.label}</Text>
+          <Text style={styles.layerPreviewBody}>{selectedLayer.body}</Text>
 
           <Pressable
             style={styles.listenButton}
             onPress={() => onOpenDeep(selectedPlace)}
           >
-            <Text style={styles.listenIcon}>▶</Text>
-            <Text style={styles.listenText}>Gerçek anlatımı dinle</Text>
+            <View style={styles.listenCircle}>
+              <Text style={styles.listenIcon}>▶</Text>
+            </View>
+            <View style={styles.listenCopy}>
+              <Text style={styles.listenKicker}>DERİN MOD</Text>
+              <Text style={styles.listenText}>Türkçe sesli anlatımı başlat</Text>
+            </View>
+            <Text style={styles.listenArrow}>→</Text>
           </Pressable>
         </View>
 
         <View style={styles.sectionHeader}>
           <View>
-            <Text style={styles.sectionEyebrow}>MENÜ DEĞİL · DENEYİM</Text>
+            <Text style={styles.sectionEyebrow}>ALT MENÜ YOK · DENEYİM EKRANDA</Text>
             <Text style={styles.sectionTitle}>Katmana Gir</Text>
           </View>
         </View>
@@ -388,7 +416,7 @@ export function HomeScreen({
             <Text style={styles.featureDetailLabel}>AKTİF DENEYİM</Text>
             <View style={styles.liveBadge}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>ÇALIŞIYOR</Text>
+              <Text style={styles.liveText}>HAZIR</Text>
             </View>
           </View>
 
@@ -401,7 +429,7 @@ export function HomeScreen({
 
           {activeFeature === 'nearby' && locationState === 'denied' && (
             <Text style={styles.permissionHint}>
-              Konum izni verilmedi. İstersen üstteki konum alanına dokunup tekrar
+              Konum izni verilmedi. Üstteki konum alanına dokunarak tekrar
               deneyebilirsin.
             </Text>
           )}
@@ -442,11 +470,14 @@ export function HomeScreen({
             <Text style={styles.memoryEyebrow}>SENİN ZAMAN KATMANIN</Text>
             <Text style={styles.memoryTitle}>Bir anı bırak.</Text>
             <Text style={styles.memoryBody}>
-              Bir mekâna bugünden bir not bırak; açılma tarihini belirle ve
+              Bu mekâna bugünden bir not bırak; açılma tarihini belirle ve
               telefonunda kalıcı olarak sakla.
             </Text>
           </View>
-          <Pressable style={styles.memoryAction} onPress={() => onOpenCapsule(selectedPlace)}>
+          <Pressable
+            style={styles.memoryAction}
+            onPress={() => onOpenCapsule(selectedPlace)}
+          >
             <Text style={styles.memoryActionText}>GELECEĞE BIRAK</Text>
           </Pressable>
         </View>
@@ -466,28 +497,27 @@ const styles = StyleSheet.create({
   },
   blueAmbient: {
     position: 'absolute',
-    width: 310,
-    height: 310,
-    borderRadius: 155,
+    width: 290,
+    height: 290,
+    borderRadius: 145,
     backgroundColor: COLORS.blue,
-    opacity: 0.08,
-    top: 120,
-    right: -170,
+    opacity: 0.07,
+    top: 160,
+    right: -190,
   },
   orangeAmbient: {
     position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
     backgroundColor: COLORS.orange,
-    opacity: 0.055,
-    top: 700,
-    left: -150,
+    opacity: 0.05,
+    top: 870,
+    left: -160,
   },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 6,
-    paddingBottom: 34,
+    paddingTop: 4,
   },
   header: {
     minHeight: 62,
@@ -631,22 +661,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   heroCopy: {
-    paddingTop: 24,
-    paddingBottom: 8,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
   kicker: {
     color: COLORS.muted,
-    fontSize: 9,
-    letterSpacing: 1.6,
-    fontWeight: '700',
+    fontSize: 8,
+    lineHeight: 13,
+    letterSpacing: 1.45,
+    fontWeight: '800',
   },
   heroTitle: {
     color: COLORS.text,
-    fontSize: 43,
+    fontSize: 44,
     lineHeight: 42,
     fontWeight: '900',
-    letterSpacing: -1.6,
+    letterSpacing: -1.8,
     marginTop: 12,
+  },
+  heroTitleSecond: {
+    marginTop: -1,
   },
   heroAccent: {
     color: COLORS.lime,
@@ -656,107 +690,155 @@ const styles = StyleSheet.create({
     maxWidth: 330,
     fontSize: 13,
     lineHeight: 19,
-    marginTop: 12,
+    marginTop: 13,
   },
   radarShell: {
     marginTop: 4,
-    borderRadius: 30,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: 'rgba(4,10,15,0.78)',
     overflow: 'hidden',
-    paddingTop: 8,
-    paddingBottom: 14,
+    paddingTop: 4,
+    paddingBottom: 13,
   },
   radarHalo: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 168,
+    height: 168,
+    borderRadius: 84,
     backgroundColor: COLORS.lime,
-    opacity: 0.035,
+    opacity: 0.03,
     alignSelf: 'center',
-    top: 70,
+    top: 62,
   },
   radarCaptionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginTop: -3,
+    paddingHorizontal: 15,
+    marginTop: -1,
   },
   radarCaption: {
     color: COLORS.muted,
-    fontSize: 9,
-    letterSpacing: 2,
+    fontSize: 8,
+    letterSpacing: 1.8,
     fontWeight: '800',
   },
   radarMeta: {
     color: COLORS.lime,
-    fontSize: 9,
-    letterSpacing: 0.7,
-    fontWeight: '700',
+    fontSize: 8,
+    letterSpacing: 0.6,
+    fontWeight: '800',
   },
-  placeFocus: {
+  placeImageCard: {
+    height: 238,
     marginTop: 14,
-    borderRadius: RADII.lg,
+    borderRadius: 28,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(67,215,255,0.24)',
+    borderColor: 'rgba(67,215,255,0.28)',
     backgroundColor: COLORS.surface,
-    padding: 16,
   },
-  placeTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  placeMonogram: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(23,109,255,0.14)',
-    borderWidth: 1,
-    borderColor: COLORS.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeMonogramText: {
-    color: COLORS.cyan,
-    fontSize: 19,
-    fontWeight: '900',
-  },
-  placeCopy: {
+  placeImage: {
     flex: 1,
-    paddingHorizontal: 12,
+    justifyContent: 'space-between',
   },
-  placeName: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontWeight: '900',
+  placeImageInner: {
+    borderRadius: 27,
   },
-  placeMeta: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 3,
+  placeImageShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(1,4,7,0.52)',
   },
-  enterButton: {
-    height: 36,
-    minWidth: 52,
-    borderRadius: 18,
-    backgroundColor: COLORS.lime,
+  placeImageTop: {
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  realPhotoBadge: {
+    height: 26,
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(2,6,8,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(203,255,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
   },
-  enterButtonText: {
-    color: '#050700',
-    fontSize: 11,
+  realPhotoBadgeText: {
+    color: COLORS.lime,
+    fontSize: 7,
     fontWeight: '900',
     letterSpacing: 1,
   },
-  placeHook: {
-    color: '#B9C4C9',
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 13,
+  placeGlyphBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(2,6,8,0.72)',
+    borderWidth: 1,
+    borderColor: COLORS.cyan,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeGlyphBadgeText: {
+    color: COLORS.cyan,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  placeImageBottom: {
+    padding: 16,
+  },
+  placeImageName: {
+    color: COLORS.text,
+    fontSize: 29,
+    lineHeight: 33,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+  },
+  placeImageMeta: {
+    color: COLORS.cyan,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  placeImageHook: {
+    color: '#D2DADD',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 7,
+    maxWidth: '92%',
+  },
+  openRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  photoCredit: {
+    flex: 1,
+    color: '#89979E',
+    fontSize: 7,
+    marginRight: 10,
+  },
+  openButton: {
+    minHeight: 36,
+    borderRadius: 18,
+    paddingHorizontal: 13,
+    backgroundColor: COLORS.lime,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  openButtonText: {
+    color: '#050700',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  openButtonArrow: {
+    color: '#050700',
+    fontSize: 14,
+    marginLeft: 7,
   },
   sectionHeader: {
     marginTop: 28,
@@ -767,8 +849,8 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     color: COLORS.lime,
-    fontSize: 9,
-    letterSpacing: 1.8,
+    fontSize: 8,
+    letterSpacing: 1.5,
     fontWeight: '800',
     marginBottom: 5,
   },
@@ -779,7 +861,7 @@ const styles = StyleSheet.create({
   },
   sectionCount: {
     color: COLORS.muted,
-    fontSize: 11,
+    fontSize: 10,
   },
   eraRow: {
     paddingRight: 18,
@@ -842,14 +924,11 @@ const styles = StyleSheet.create({
     marginLeft: -6,
     backgroundColor: COLORS.lime,
   },
-  layerPreviewCopy: {
-    paddingRight: 4,
-  },
   layerPreviewYear: {
     color: COLORS.orange,
     fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 1.6,
+    letterSpacing: 1.4,
   },
   layerPreviewTitle: {
     color: COLORS.text,
@@ -865,26 +944,48 @@ const styles = StyleSheet.create({
   },
   listenButton: {
     marginTop: 16,
-    minHeight: 46,
-    borderRadius: 23,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(23,109,255,0.15)',
+    minHeight: 58,
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(23,109,255,0.12)',
     borderWidth: 1,
-    borderColor: COLORS.blue,
+    borderColor: 'rgba(67,215,255,0.38)',
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listenCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.cyan,
     alignItems: 'center',
     justifyContent: 'center',
   },
   listenIcon: {
     color: COLORS.cyan,
-    fontSize: 12,
-    marginRight: 8,
+    fontSize: 11,
+    marginLeft: 2,
+  },
+  listenCopy: {
+    flex: 1,
+    paddingHorizontal: 11,
+  },
+  listenKicker: {
+    color: COLORS.cyan,
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1.1,
   },
   listenText: {
     color: COLORS.text,
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    marginTop: 3,
+  },
+  listenArrow: {
+    color: COLORS.lime,
+    fontSize: 18,
   },
   featureGrid: {
     flexDirection: 'row',
@@ -907,8 +1008,8 @@ const styles = StyleSheet.create({
   },
   featureDetailLabel: {
     color: COLORS.muted,
-    fontSize: 9,
-    letterSpacing: 2,
+    fontSize: 8,
+    letterSpacing: 1.7,
     fontWeight: '800',
   },
   liveBadge: {
@@ -929,7 +1030,7 @@ const styles = StyleSheet.create({
   liveText: {
     color: COLORS.lime,
     fontSize: 8,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     fontWeight: '900',
   },
   featureDetailTitle: {
@@ -964,7 +1065,7 @@ const styles = StyleSheet.create({
     color: '#050700',
     fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 1.4,
+    letterSpacing: 1.3,
   },
   primaryActionArrow: {
     color: '#050700',
@@ -1040,7 +1141,7 @@ const styles = StyleSheet.create({
     color: '#42515A',
     textAlign: 'center',
     fontSize: 8,
-    letterSpacing: 1.8,
+    letterSpacing: 1.6,
     marginTop: 32,
   },
 });
