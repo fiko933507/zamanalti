@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PLACES, type Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
@@ -17,20 +16,35 @@ type Props = {
   onOpenPlace: (place: Place) => void;
 };
 
-const openMaps = (place: Place) => {
-  const { latitude, longitude } = place.coordinates;
-  const label = encodeURIComponent(place.name);
-
-  const url =
-    Platform.OS === 'ios'
-      ? `http://maps.apple.com/?daddr=${latitude},${longitude}&q=${label}`
-      : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
-
-  void Linking.openURL(url);
+const ISTANBUL_REGION = {
+  latitude: 41.019,
+  longitude: 28.965,
+  latitudeDelta: 0.065,
+  longitudeDelta: 0.065,
 };
 
 export function RouteScreen({ onBack, onOpenPlace }: Props) {
   const insets = useSafeAreaInsets();
+  const mapRef = useRef<MapView | null>(null);
+  const [selectedId, setSelectedId] = useState(PLACES[0]!.id);
+
+  const selectedPlace = useMemo(
+    () => PLACES.find((place) => place.id === selectedId) ?? PLACES[0]!,
+    [selectedId],
+  );
+
+  const focusPlace = (place: Place) => {
+    setSelectedId(place.id);
+    mapRef.current?.animateToRegion(
+      {
+        latitude: place.coordinates.latitude,
+        longitude: place.coordinates.longitude,
+        latitudeDelta: 0.017,
+        longitudeDelta: 0.017,
+      },
+      450,
+    );
+  };
 
   return (
     <View style={styles.root}>
@@ -60,71 +74,157 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
           </View>
         </View>
 
-        <Text style={styles.eyebrow}>İSTANBUL · İLK ROTA</Text>
+        <Text style={styles.eyebrow}>İSTANBUL · UYGULAMA İÇİ ROTA</Text>
         <Text style={styles.title}>Şehri tarihin içinden yürü.</Text>
         <Text style={styles.subtitle}>
-          Bu rota dört doğrulanmış mekânı birbirine bağlıyor. Her durakta
-          mekânın zaman katmanını açabilir veya telefonunun harita uygulamasında
-          yol tarifini başlatabilirsin.
+          Artık başka bir harita uygulamasına çıkmıyorsun. Rota, duraklar ve
+          mekân katmanları ZAMANALTI içinde kalıyor.
         </Text>
 
+        <View style={styles.mapFrame}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={ISTANBUL_REGION}
+            mapType="standard"
+            toolbarEnabled={false}
+            showsCompass={false}
+            showsScale={false}
+          >
+            <Polyline
+              coordinates={PLACES.map((place) => place.coordinates)}
+              strokeColor={COLORS.orange}
+              strokeWidth={4}
+              lineDashPattern={[9, 7]}
+            />
+
+            {PLACES.map((place, index) => (
+              <Marker
+                key={place.id}
+                coordinate={place.coordinates}
+                title={place.name}
+                description={`${index + 1}. durak · ${place.district}`}
+                pinColor={place.id === selectedId ? COLORS.lime : COLORS.orange}
+                onPress={() => setSelectedId(place.id)}
+              />
+            ))}
+          </MapView>
+
+          <View style={styles.mapOverlayTop}>
+            <Text style={styles.mapOverlayKicker}>HİKÂYE ROTASI</Text>
+            <Text style={styles.mapOverlayText}>
+              Turuncu çizgi fiziksel yol tarifi değil, zaman duraklarının
+              uygulama içindeki hikâye bağlantısıdır.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.selectedPanel}>
+          <View style={styles.selectedIndex}>
+            <Text style={styles.selectedIndexText}>
+              {PLACES.findIndex((item) => item.id === selectedPlace.id) + 1}
+            </Text>
+          </View>
+
+          <View style={styles.selectedCopy}>
+            <Text style={styles.selectedName}>{selectedPlace.name}</Text>
+            <Text style={styles.selectedMeta}>
+              {selectedPlace.district} · {selectedPlace.city}
+            </Text>
+            <Text numberOfLines={2} style={styles.selectedHook}>
+              {selectedPlace.hook}
+            </Text>
+          </View>
+
+          <Pressable
+            style={styles.openSelected}
+            onPress={() => onOpenPlace(selectedPlace)}
+          >
+            <Text style={styles.openSelectedText}>KATMANI AÇ</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.routeLine}>
-          {PLACES.map((place, index) => (
-            <View key={place.id} style={styles.stopWrap}>
-              {index < PLACES.length - 1 && <View style={styles.connector} />}
+          {PLACES.map((place, index) => {
+            const selected = place.id === selectedId;
 
-              <View style={styles.stopRow}>
-                <View style={styles.stopRail}>
-                  <View style={styles.stopNode}>
-                    <Text style={styles.stopNodeText}>{index + 1}</Text>
-                  </View>
-                </View>
+            return (
+              <View key={place.id} style={styles.stopWrap}>
+                {index < PLACES.length - 1 && <View style={styles.connector} />}
 
-                <View style={styles.stopCard}>
-                  <View style={styles.stopTop}>
-                    <View style={styles.placeGlyph}>
-                      <Text style={styles.placeGlyphText}>{place.glyph}</Text>
-                    </View>
-
-                    <View style={styles.stopCopy}>
-                      <Text style={styles.placeName}>{place.name}</Text>
-                      <Text style={styles.placeMeta}>
-                        {place.district} · {place.city}
+                <View style={styles.stopRow}>
+                  <View style={styles.stopRail}>
+                    <View
+                      style={[
+                        styles.stopNode,
+                        selected && styles.stopNodeSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.stopNodeText,
+                          selected && styles.stopNodeTextSelected,
+                        ]}
+                      >
+                        {index + 1}
                       </Text>
                     </View>
                   </View>
 
-                  <Text style={styles.placeHook}>{place.hook}</Text>
+                  <View
+                    style={[
+                      styles.stopCard,
+                      selected && styles.stopCardSelected,
+                    ]}
+                  >
+                    <View style={styles.stopTop}>
+                      <View style={styles.placeGlyph}>
+                        <Text style={styles.placeGlyphText}>{place.glyph}</Text>
+                      </View>
 
-                  <View style={styles.stopActions}>
-                    <Pressable
-                      style={styles.secondaryAction}
-                      onPress={() => onOpenPlace(place)}
-                    >
-                      <Text style={styles.secondaryActionText}>KATMANI AÇ</Text>
-                    </Pressable>
+                      <View style={styles.stopCopy}>
+                        <Text style={styles.placeName}>{place.name}</Text>
+                        <Text style={styles.placeMeta}>
+                          {place.district} · {place.city}
+                        </Text>
+                      </View>
+                    </View>
 
-                    <Pressable
-                      style={styles.primaryAction}
-                      onPress={() => openMaps(place)}
-                    >
-                      <Text style={styles.primaryActionText}>YOL TARİFİ</Text>
-                      <Text style={styles.primaryArrow}>↗</Text>
-                    </Pressable>
+                    <Text style={styles.placeHook}>{place.hook}</Text>
+
+                    <View style={styles.stopActions}>
+                      <Pressable
+                        style={styles.secondaryAction}
+                        onPress={() => focusPlace(place)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          HARİTADA GÖR
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        style={styles.primaryAction}
+                        onPress={() => onOpenPlace(place)}
+                      >
+                        <Text style={styles.primaryActionText}>KATMANI AÇ</Text>
+                        <Text style={styles.primaryArrow}>→</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         <View style={styles.notePanel}>
-          <Text style={styles.noteKicker}>ROTA NASIL ÇALIŞIR?</Text>
-          <Text style={styles.noteTitle}>ZAMANALTI yön tarifi üretmez.</Text>
+          <Text style={styles.noteKicker}>NEDEN DIŞARI ÇIKMIYOR?</Text>
+          <Text style={styles.noteTitle}>Rota artık ZAMANALTI’nın parçası.</Text>
           <Text style={styles.noteBody}>
-            Güvenilir ve güncel navigasyon için cihazındaki harita uygulamasını
-            açar. ZAMANALTI’nın görevi rota üzerindeki mekânların tarih
-            katmanlarını, kaynaklarını ve anlatılarını birbirine bağlamaktır.
+            Bu sürüm, durakların coğrafi konumunu ve aralarındaki hikâye
+            bağlantısını uygulama içinde gösterir. Gerçek sokak yönlendirmesi
+            için ileride uygulama içine bir rota motoru bağlanabilir; şimdilik
+            kullanıcı Google Maps ya da başka bir uygulamaya gönderilmez.
           </Text>
         </View>
       </ScrollView>
@@ -211,7 +311,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 1.7,
-    marginTop: 28,
+    marginTop: 26,
   },
   title: {
     color: COLORS.text,
@@ -227,8 +327,103 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 12,
   },
+  mapFrame: {
+    height: 330,
+    marginTop: 20,
+    borderRadius: 28,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.34)',
+    backgroundColor: COLORS.surface,
+  },
+  map: {
+    flex: 1,
+  },
+  mapOverlayTop: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 12,
+    borderRadius: 16,
+    padding: 11,
+    backgroundColor: 'rgba(2,6,9,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.32)',
+  },
+  mapOverlayKicker: {
+    color: COLORS.orange,
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  mapOverlayText: {
+    color: '#B4C0C6',
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 4,
+  },
+  selectedPanel: {
+    marginTop: 12,
+    minHeight: 104,
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(203,255,0,0.28)',
+    backgroundColor: '#071009',
+    padding: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedIndex: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: COLORS.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedIndexText: {
+    color: COLORS.lime,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  selectedCopy: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+  selectedName: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  selectedMeta: {
+    color: COLORS.muted,
+    fontSize: 8,
+    marginTop: 3,
+  },
+  selectedHook: {
+    color: '#AAB5BA',
+    fontSize: 8,
+    lineHeight: 12,
+    marginTop: 5,
+  },
+  openSelected: {
+    minWidth: 74,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  openSelectedText: {
+    color: '#050700',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
   routeLine: {
-    marginTop: 28,
+    marginTop: 24,
   },
   stopWrap: {
     position: 'relative',
@@ -262,10 +457,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 2,
   },
+  stopNodeSelected: {
+    borderColor: COLORS.lime,
+    backgroundColor: 'rgba(203,255,0,0.09)',
+  },
   stopNodeText: {
     color: COLORS.orange,
     fontSize: 10,
     fontWeight: '900',
+  },
+  stopNodeTextSelected: {
+    color: COLORS.lime,
   },
   stopCard: {
     flex: 1,
@@ -275,6 +477,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: 15,
     marginLeft: 8,
+  },
+  stopCardSelected: {
+    borderColor: 'rgba(203,255,0,0.38)',
   },
   stopTop: {
     flexDirection: 'row',
@@ -333,7 +538,7 @@ const styles = StyleSheet.create({
     color: COLORS.cyan,
     fontSize: 8,
     fontWeight: '900',
-    letterSpacing: 0.9,
+    letterSpacing: 0.8,
   },
   primaryAction: {
     flex: 1,
@@ -349,7 +554,7 @@ const styles = StyleSheet.create({
     color: '#050700',
     fontSize: 8,
     fontWeight: '900',
-    letterSpacing: 0.9,
+    letterSpacing: 0.8,
   },
   primaryArrow: {
     color: '#050700',
