@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ImageBackground,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import type { Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
@@ -10,8 +18,12 @@ type Props = {
 };
 
 export function DeepModeScreen({ place, onBack }: Props) {
+  const insets = useSafeAreaInsets();
   const [playing, setPlaying] = useState(false);
   const [chapter, setChapter] = useState(0);
+  const [voiceId, setVoiceId] = useState<string | undefined>();
+  const [voiceLabel, setVoiceLabel] = useState('Türkçe ses hazırlanıyor');
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
   const currentChapter = place.chapters[chapter] ?? place.chapters[0]!;
   const currentLayer =
@@ -23,7 +35,38 @@ export function DeepModeScreen({ place, onBack }: Props) {
   );
 
   useEffect(() => {
+    let mounted = true;
+
+    const prepareVoice = async () => {
+      try {
+        const voices = await Speech.getAvailableVoicesAsync();
+        if (!mounted) return;
+
+        const turkishVoice =
+          voices.find((voice) =>
+            voice.language?.toLocaleLowerCase().startsWith('tr-tr'),
+          ) ??
+          voices.find((voice) =>
+            voice.language?.toLocaleLowerCase().startsWith('tr'),
+          );
+
+        if (turkishVoice) {
+          setVoiceId(turkishVoice.identifier);
+          setVoiceLabel('Türkçe sistem sesi hazır');
+        } else {
+          setVoiceLabel('Varsayılan cihaz sesi kullanılacak');
+        }
+      } catch {
+        if (mounted) {
+          setVoiceLabel('Varsayılan cihaz sesi kullanılacak');
+        }
+      }
+    };
+
+    void prepareVoice();
+
     return () => {
+      mounted = false;
       void Speech.stop();
     };
   }, []);
@@ -34,20 +77,26 @@ export function DeepModeScreen({ place, onBack }: Props) {
   };
 
   const startSpeech = async () => {
-    await Speech.stop();
-    setPlaying(true);
+    const narration = `${place.name}. ${currentChapter.title}. ${currentChapter.body}`;
 
-    Speech.speak(
-      `${place.name}. ${currentChapter.title}. ${currentChapter.body}`,
-      {
-        language: 'tr-TR',
-        rate: 0.88,
-        pitch: 1.0,
-        onDone: () => setPlaying(false),
-        onStopped: () => setPlaying(false),
-        onError: () => setPlaying(false),
+    setSpeechError(null);
+    await Speech.stop();
+
+    Speech.speak(narration, {
+      language: 'tr-TR',
+      voice: voiceId,
+      rate: 0.86,
+      pitch: 1,
+      onStart: () => setPlaying(true),
+      onDone: () => setPlaying(false),
+      onStopped: () => setPlaying(false),
+      onError: () => {
+        setPlaying(false);
+        setSpeechError(
+          'Ses başlatılamadı. Telefonun metin-okuma ayarlarında Türkçe ses paketinin etkin olduğundan emin ol.',
+        );
       },
-    );
+    });
   };
 
   const toggleSpeech = () => {
@@ -61,6 +110,7 @@ export function DeepModeScreen({ place, onBack }: Props) {
   const selectChapter = (index: number) => {
     void Speech.stop();
     setPlaying(false);
+    setSpeechError(null);
     setChapter(index);
   };
 
@@ -78,7 +128,10 @@ export function DeepModeScreen({ place, onBack }: Props) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(52, insets.bottom + 42) },
+        ]}
       >
         <View style={styles.topRow}>
           <Pressable
@@ -100,29 +153,60 @@ export function DeepModeScreen({ place, onBack }: Props) {
 
           <View style={styles.livePill}>
             <View style={[styles.liveDot, playing && styles.liveDotActive]} />
-            <Text style={styles.liveText}>{playing ? 'SES AÇIK' : 'HAZIR'}</Text>
+            <Text style={styles.liveText}>{playing ? 'DİNLENİYOR' : 'HAZIR'}</Text>
           </View>
         </View>
 
-        <View style={styles.stage}>
+        <ImageBackground
+          source={{ uri: place.image.url }}
+          resizeMode="cover"
+          style={styles.stage}
+          imageStyle={styles.stageImage}
+        >
+          <View style={styles.stageShade} />
           <View style={styles.stageRingOuter} />
           <View style={styles.stageRingMiddle} />
           <View style={styles.stageRingInner} />
-          <View style={[styles.stageCore, playing && styles.stageCorePlaying]}>
-            <Text style={styles.stageGlyph}>{place.glyph}</Text>
+
+          <Pressable
+            onPress={toggleSpeech}
+            style={[styles.stageCore, playing && styles.stageCorePlaying]}
+          >
+            <Text style={styles.stagePlay}>{playing ? 'Ⅱ' : '▶'}</Text>
+          </Pressable>
+
+          <View style={styles.photoBadge}>
+            <Text style={styles.photoBadgeText}>{place.image.license}</Text>
           </View>
-          <View style={styles.stageSignalA} />
-          <View style={styles.stageSignalB} />
-        </View>
+
+          <Text numberOfLines={1} style={styles.photoCredit}>
+            {place.image.credit}
+          </Text>
+        </ImageBackground>
 
         <Text style={styles.eyebrow}>
           {place.chapters.length} BÖLÜMLÜK KAYNAKLI ANLATIM
         </Text>
         <Text style={styles.placeName}>{place.name}</Text>
         <Text style={styles.subtitle}>
-          Telefonunun Türkçe metin-okuma sesini kullanır. Bölümü seç, oynat ve
-          gerçek mekâna bakarak dinle.
+          Oynat düğmesine dokun. Seçili bölümün tamamı Türkçe olarak seslendirilir;
+          aynı metni ekranda da okuyabilirsin.
         </Text>
+
+        <View style={styles.voiceStatus}>
+          <View style={styles.voiceStatusDot} />
+          <View style={styles.voiceStatusCopy}>
+            <Text style={styles.voiceStatusTitle}>SES MOTORU</Text>
+            <Text style={styles.voiceStatusText}>{voiceLabel}</Text>
+          </View>
+        </View>
+
+        {speechError && (
+          <View style={styles.errorPanel}>
+            <Text style={styles.errorTitle}>Ses başlatılamadı</Text>
+            <Text style={styles.errorBody}>{speechError}</Text>
+          </View>
+        )}
 
         <View style={styles.player}>
           <View style={styles.progressTop}>
@@ -241,12 +325,12 @@ export function DeepModeScreen({ place, onBack }: Props) {
         <View style={styles.noScreenPanel}>
           <Text style={styles.noScreenKicker}>GERÇEK MEKÂNA BAK</Text>
           <Text style={styles.noScreenTitle}>
-            Telefonu elinde tutmak zorunda değilsin.
+            Ses anlatır, ekran bağlamı gösterir.
           </Text>
           <Text style={styles.noScreenBody}>
-            Anlatım başladıktan sonra ekranı aşağı indirip çevrene bakabilirsin.
-            Bu prototip sistem metin-okuma kullanır; sonraki üretim aşamasında
-            insan sesli kayıtları aynı bölüm yapısına bağlanabilir.
+            Bu sürüm telefonun Türkçe metin-okuma motorunu kullanır. İçerik boş
+            değildir; seçilen bölümün tam metni yukarıdaki oynatıcıda görünür ve
+            aynı metin seslendirilir.
           </Text>
         </View>
       </ScrollView>
@@ -256,16 +340,16 @@ export function DeepModeScreen({ place, onBack }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingHorizontal: 18, paddingTop: 6, paddingBottom: 38 },
+  content: { paddingHorizontal: 18, paddingTop: 4 },
   blueGlow: {
     position: 'absolute',
-    width: 380,
-    height: 380,
-    borderRadius: 190,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
     backgroundColor: COLORS.blue,
-    opacity: 0.1,
-    top: 120,
-    right: -210,
+    opacity: 0.07,
+    top: 140,
+    right: -220,
   },
   topRow: {
     minHeight: 60,
@@ -284,26 +368,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   back: { color: COLORS.text, fontSize: 30, marginTop: -4 },
-  titleBlock: { alignItems: 'center', flexShrink: 1, paddingHorizontal: 6 },
+  titleBlock: { alignItems: 'center', flexShrink: 1, paddingHorizontal: 5 },
   brand: {
     color: COLORS.text,
     fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 2.4,
+    letterSpacing: 2.3,
   },
   brandAccent: { color: COLORS.lime },
   modeName: {
     color: COLORS.cyan,
     fontSize: 7,
     fontWeight: '900',
-    letterSpacing: 1.5,
+    letterSpacing: 1.25,
     marginTop: 4,
   },
   livePill: {
-    minWidth: 60,
+    minWidth: 68,
     height: 32,
     borderRadius: 16,
-    paddingHorizontal: 9,
+    paddingHorizontal: 8,
     backgroundColor: 'rgba(203,255,0,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(203,255,0,0.22)',
@@ -323,87 +407,109 @@ const styles = StyleSheet.create({
   },
   liveText: {
     color: COLORS.lime,
-    fontSize: 7,
+    fontSize: 6.5,
     fontWeight: '900',
-    letterSpacing: 0.7,
+    letterSpacing: 0.6,
   },
   stage: {
-    height: 280,
+    height: 270,
+    marginTop: 8,
+    marginBottom: 24,
+    borderRadius: 30,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(67,215,255,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+  },
+  stageImage: {
+    borderRadius: 29,
+  },
+  stageShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,4,8,0.58)',
   },
   stageRingOuter: {
     position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
+    width: 224,
+    height: 224,
+    borderRadius: 112,
     borderWidth: 1,
-    borderColor: 'rgba(67,215,255,0.18)',
+    borderColor: 'rgba(67,215,255,0.35)',
   },
   stageRingMiddle: {
     position: 'absolute',
-    width: 194,
-    height: 194,
-    borderRadius: 97,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
     borderWidth: 1,
-    borderColor: 'rgba(203,255,0,0.35)',
+    borderColor: 'rgba(203,255,0,0.48)',
     borderStyle: 'dashed',
   },
   stageRingInner: {
     position: 'absolute',
-    width: 136,
-    height: 136,
-    borderRadius: 68,
+    width: 118,
+    height: 118,
+    borderRadius: 59,
     borderWidth: 1,
-    borderColor: 'rgba(255,106,0,0.32)',
+    borderColor: 'rgba(255,106,0,0.45)',
   },
   stageCore: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#050B0F',
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: 'rgba(5,11,15,0.92)',
     borderWidth: 2,
     borderColor: COLORS.lime,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: COLORS.lime,
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.38,
     shadowRadius: 16,
     elevation: 8,
   },
   stageCorePlaying: {
-    shadowOpacity: 0.8,
-    shadowRadius: 28,
+    shadowOpacity: 0.85,
+    shadowRadius: 26,
     elevation: 14,
   },
-  stageGlyph: {
+  stagePlay: {
     color: COLORS.lime,
-    fontSize: 38,
+    fontSize: 24,
     fontWeight: '900',
+    marginLeft: 2,
   },
-  stageSignalA: {
+  photoBadge: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.cyan,
-    top: 62,
-    right: 80,
+    top: 14,
+    right: 14,
+    minHeight: 24,
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    backgroundColor: 'rgba(2,6,9,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  stageSignalB: {
+  photoBadgeText: {
+    color: '#C7D0D5',
+    fontSize: 6.5,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+  },
+  photoCredit: {
     position: 'absolute',
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: COLORS.orange,
-    bottom: 58,
-    left: 64,
+    left: 14,
+    right: 100,
+    bottom: 12,
+    color: '#B3BFC5',
+    fontSize: 7,
   },
   eyebrow: {
     color: COLORS.lime,
-    fontSize: 9,
-    letterSpacing: 1.7,
+    fontSize: 8,
+    letterSpacing: 1.55,
     fontWeight: '900',
   },
   placeName: {
@@ -421,9 +527,61 @@ const styles = StyleSheet.create({
     marginTop: 10,
     maxWidth: 360,
   },
+  voiceStatus: {
+    minHeight: 58,
+    marginTop: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: '#050A0E',
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  voiceStatusDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: COLORS.lime,
+    marginRight: 11,
+  },
+  voiceStatusCopy: {
+    flex: 1,
+  },
+  voiceStatusTitle: {
+    color: COLORS.cyan,
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  voiceStatusText: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  errorPanel: {
+    marginTop: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.4)',
+    backgroundColor: 'rgba(255,106,0,0.06)',
+    padding: 14,
+  },
+  errorTitle: {
+    color: COLORS.orange,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  errorBody: {
+    color: '#B7C1C6',
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 5,
+  },
   player: {
-    marginTop: 24,
-    borderRadius: 30,
+    marginTop: 12,
+    borderRadius: 28,
     padding: 18,
     backgroundColor: '#071018',
     borderWidth: 1,
@@ -467,14 +625,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sideControl: {
-    width: 66,
+    width: 64,
     height: 52,
     borderRadius: 26,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 12,
+    marginHorizontal: 11,
   },
   controlDisabled: {
     opacity: 0.25,
@@ -489,7 +647,7 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 6,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
     marginTop: 2,
   },
   playButton: {
@@ -504,12 +662,16 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  playIcon: { color: '#050700', fontSize: 25, fontWeight: '900' },
+  playIcon: {
+    color: '#050700',
+    fontSize: 25,
+    fontWeight: '900',
+  },
   nowLabel: {
     color: COLORS.cyan,
     fontSize: 8,
     fontWeight: '900',
-    letterSpacing: 1.7,
+    letterSpacing: 1.5,
     textAlign: 'center',
     marginTop: 19,
   },
@@ -522,7 +684,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   nowBody: {
-    color: '#A5B2B9',
+    color: '#AAB7BD',
     fontSize: 12,
     lineHeight: 19,
     marginTop: 15,
@@ -549,7 +711,7 @@ const styles = StyleSheet.create({
   },
   contextOrbText: {
     color: COLORS.orange,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     textAlign: 'center',
   },
@@ -579,9 +741,11 @@ const styles = StyleSheet.create({
     marginTop: 28,
     marginBottom: 10,
   },
-  chapterList: { gap: 8 },
+  chapterList: {
+    gap: 8,
+  },
   chapter: {
-    minHeight: 82,
+    minHeight: 84,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -604,23 +768,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chapterIndexActive: { borderColor: COLORS.lime },
+  chapterIndexActive: {
+    borderColor: COLORS.lime,
+  },
   chapterIndexText: {
     color: COLORS.muted,
     fontSize: 9,
     fontWeight: '900',
   },
-  chapterIndexTextActive: { color: COLORS.lime },
-  chapterCopy: { flex: 1, paddingHorizontal: 12 },
-  chapterTitle: { color: COLORS.text, fontSize: 13, fontWeight: '800' },
+  chapterIndexTextActive: {
+    color: COLORS.lime,
+  },
+  chapterCopy: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  chapterTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
   chapterPreview: {
     color: COLORS.muted,
     fontSize: 9,
     lineHeight: 13,
     marginTop: 4,
   },
-  chapterArrow: { color: COLORS.muted, fontSize: 17 },
-  chapterArrowActive: { color: COLORS.lime },
+  chapterArrow: {
+    color: COLORS.muted,
+    fontSize: 17,
+  },
+  chapterArrowActive: {
+    color: COLORS.lime,
+  },
   noScreenPanel: {
     marginTop: 22,
     borderRadius: RADII.lg,
