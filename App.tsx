@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  LogBox,
   StatusBar,
   StyleSheet,
   Text,
@@ -17,6 +18,10 @@ import { TimeCapsuleScreen } from './src/screens/TimeCapsuleScreen';
 import { RouteScreen } from './src/screens/RouteScreen';
 import { PLACES, type Place } from './src/data/places';
 import { COLORS } from './src/theme';
+
+LogBox.ignoreLogs([
+  'SafeAreaView has been deprecated',
+]);
 
 type AppScreen = 'home' | 'place' | 'deep' | 'capsule' | 'route';
 
