@@ -9,7 +9,7 @@
     "android": {
       "package": "com.zamanalti.app",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -27,6 +27,15 @@
           "locationWhenInUsePermission": "ZAMANALTI, yakınındaki tarih katmanlarını göstermek için konumunu yalnızca uygulamayı kullanırken ister."
         }
       ]
-    ]
+    ],
+    "androidStatusBar": {
+      "backgroundColor": "#020406",
+      "barStyle": "light-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#050607",
+      "barStyle": "light-content"
+    }
   }
 }
