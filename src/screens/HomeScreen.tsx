@@ -24,6 +24,8 @@ type Props = {
   onOpenDeep: (place: Place) => void;
   onOpenCapsule: (place: Place) => void;
   onOpenRoute: () => void;
+  onOpenNearby: () => void;
+  onOpenDream: () => void;
 };
 
 const FEATURE_COPY: Record<FeatureKey, { title: string; body: string }> = {
@@ -74,6 +76,8 @@ export function HomeScreen({
   onOpenDeep,
   onOpenCapsule,
   onOpenRoute,
+  onOpenNearby,
+  onOpenDream,
 }: Props) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -383,7 +387,10 @@ export function HomeScreen({
             icon="◉"
             tone="blue"
             active={activeFeature === 'hidden'}
-            onPress={() => setActiveFeature('hidden')}
+            onPress={() => {
+              setActiveFeature('hidden');
+              onOpenPlace(selectedPlace);
+            }}
           />
           <FeatureCard
             title="Yakındaki İzler"
@@ -391,7 +398,10 @@ export function HomeScreen({
             icon="⌖"
             tone="lime"
             active={activeFeature === 'nearby'}
-            onPress={activateNearby}
+            onPress={() => {
+              setActiveFeature('nearby');
+              onOpenNearby();
+            }}
           />
           <FeatureCard
             title="Hafıza Rotası"
@@ -399,7 +409,10 @@ export function HomeScreen({
             icon="⌁"
             tone="orange"
             active={activeFeature === 'route'}
-            onPress={() => setActiveFeature('route')}
+            onPress={() => {
+              setActiveFeature('route');
+              onOpenRoute();
+            }}
           />
           <FeatureCard
             title="Derin Mod"
@@ -407,9 +420,27 @@ export function HomeScreen({
             icon="◇"
             tone="cyan"
             active={activeFeature === 'deep'}
-            onPress={() => setActiveFeature('deep')}
+            onPress={() => {
+              setActiveFeature('deep');
+              onOpenDeep(selectedPlace);
+            }}
           />
         </View>
+
+        <Pressable style={styles.dreamCard} onPress={onOpenDream}>
+          <View style={styles.dreamOrb}>
+            <Text style={styles.dreamOrbText}>3B</Text>
+          </View>
+          <View style={styles.dreamCopy}>
+            <Text style={styles.dreamKicker}>RÜYA YÖNETMENİ</Text>
+            <Text style={styles.dreamTitle}>Rüyanı 3B sahneye çiz.</Text>
+            <Text style={styles.dreamBody}>
+              Rüyanı yaz; gece, su, şehir, uçuş, doğa ve insan motiflerinden
+              hareketli bir perspektif sahnesi oluştur.
+            </Text>
+          </View>
+          <Text style={styles.dreamArrow}>→</Text>
+        </Pressable>
 
         <View style={styles.featureDetail}>
           <View style={styles.featureDetailTop}>
@@ -438,7 +469,7 @@ export function HomeScreen({
             style={styles.primaryAction}
             onPress={() => {
               if (activeFeature === 'nearby') {
-                void requestLocation();
+                onOpenNearby();
                 return;
               }
 
@@ -996,6 +1027,63 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     rowGap: 10,
+  },
+  dreamCard: {
+    marginTop: 12,
+    minHeight: 116,
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(164,124,255,0.42)',
+    backgroundColor: '#0A0812',
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  dreamOrb: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: '#A47CFF',
+    backgroundColor: 'rgba(164,124,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#A47CFF',
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 7,
+  },
+  dreamOrbText: {
+    color: '#CBB9FF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  dreamCopy: {
+    flex: 1,
+    paddingHorizontal: 13,
+  },
+  dreamKicker: {
+    color: '#A47CFF',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  dreamTitle: {
+    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 5,
+  },
+  dreamBody: {
+    color: COLORS.muted,
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 5,
+  },
+  dreamArrow: {
+    color: '#CBB9FF',
+    fontSize: 22,
   },
   featureDetail: {
     marginTop: 12,
