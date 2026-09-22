@@ -356,7 +356,11 @@ const styles = StyleSheet.create({
     borderRadius: 29,
   },
   heroShade: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(1,4,8,0.48)',
   },
   heroTopRow: {
