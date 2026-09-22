@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PLACES, type Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
 
@@ -29,13 +30,18 @@ const openMaps = (place: Place) => {
 };
 
 export function RouteScreen({ onBack, onOpenPlace }: Props) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.root}>
       <View style={styles.orangeGlow} pointerEvents="none" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(52, insets.bottom + 42) },
+        ]}
       >
         <View style={styles.topRow}>
           <Pressable onPress={onBack} style={styles.backButton}>
@@ -133,8 +139,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 6,
-    paddingBottom: 38,
+    paddingTop: 4,
   },
   orangeGlow: {
     position: 'absolute',
