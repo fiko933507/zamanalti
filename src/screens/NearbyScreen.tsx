@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,8 +6,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { InAppMap } from '../components/InAppMap';
 import { PLACES, type Place } from '../data/places';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { distanceKm, formatDistance } from '../utils/geo';
@@ -18,17 +18,15 @@ type Props = {
   onOpenPlace: (place: Place) => void;
 };
 
-const ISTANBUL_REGION = {
+const ISTANBUL_CENTER = {
   latitude: 41.019,
   longitude: 28.965,
-  latitudeDelta: 0.065,
-  longitudeDelta: 0.065,
 };
 
 export function NearbyScreen({ onBack, onOpenPlace }: Props) {
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mapCenter, setMapCenter] = useState(ISTANBUL_CENTER);
   const { coordinate, cityLabel, state, requestLocation } = useUserLocation();
 
   useEffect(() => {
@@ -48,21 +46,28 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
     const first = sortedPlaces[0];
     if (first && !selectedId) {
       setSelectedId(first.place.id);
+      setMapCenter({ ...first.place.coordinates });
     }
   }, [sortedPlaces, selectedId]);
 
+  const mapPoints = useMemo(
+    () =>
+      PLACES.map((place) => ({
+        id: place.id,
+        label: place.name,
+        glyph: place.glyph,
+        coordinate: place.coordinates,
+        tone: 'cyan' as const,
+      })),
+    [],
+  );
+
   const focusPlace = (place: Place) => {
     setSelectedId(place.id);
-    mapRef.current?.animateToRegion(
-      {
-        latitude: place.coordinates.latitude,
-        longitude: place.coordinates.longitude,
-        latitudeDelta: 0.018,
-        longitudeDelta: 0.018,
-      },
-      450,
-    );
+    setMapCenter({ ...place.coordinates });
   };
+
+  const nearestDistance = sortedPlaces[0]?.km ?? null;
 
   return (
     <View style={styles.root}>
@@ -96,9 +101,8 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
         <Text style={styles.eyebrow}>KONUMUNA GÖRE · UYGULAMA İÇİNDE</Text>
         <Text style={styles.title}>Yakındaki geçmişi bul.</Text>
         <Text style={styles.subtitle}>
-          Konum izni verdiğinde mekânları sana olan gerçek kuş uçuşu
-          mesafesine göre sıralıyoruz. Karttan doğrudan zaman katmanına
-          girebilirsin.
+          Konum izni verdiğinde kayıtları gerçek kuş uçuşu mesafesine göre
+          sıralıyoruz. Harita bu ekranın içinde çalışır; Google Maps açılmaz.
         </Text>
 
         <View style={styles.statusPanel}>
@@ -106,8 +110,7 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
             style={[
               styles.statusDot,
               state === 'ready' && styles.statusDotReady,
-              state === 'error' && styles.statusDotError,
-              state === 'denied' && styles.statusDotError,
+              (state === 'error' || state === 'denied') && styles.statusDotError,
             ]}
           />
           <View style={styles.statusCopy}>
@@ -134,51 +137,44 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
           )}
         </View>
 
+        {nearestDistance !== null && nearestDistance > 50 && (
+          <View style={styles.collectionNotice}>
+            <Text style={styles.collectionNoticeTitle}>
+              İlk koleksiyon İstanbul’da
+            </Text>
+            <Text style={styles.collectionNoticeText}>
+              Bulunduğun konuma 50 km içinde kayıt yok. Yine de İstanbul
+              koleksiyonunu mesafeye göre sıraladık.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.mapFrame}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={ISTANBUL_REGION}
-            mapType="standard"
-            showsCompass={false}
-            showsScale={false}
-            toolbarEnabled={false}
-          >
-            {coordinate && (
-              <Marker
-                coordinate={coordinate}
-                title="Sen"
-                description="Yaklaşık konumun"
-                pinColor={COLORS.lime}
-              />
-            )}
-
-            {PLACES.map((place) => (
-              <Marker
-                key={place.id}
-                coordinate={place.coordinates}
-                title={place.name}
-                description={place.district}
-                pinColor={place.id === selectedId ? COLORS.orange : COLORS.cyan}
-                onPress={() => setSelectedId(place.id)}
-              />
-            ))}
-          </MapView>
-
-          <View style={styles.mapLabel}>
-            <Text style={styles.mapLabelText}>CANLI YAKINLIK HARİTASI</Text>
+          <InAppMap
+            center={mapCenter}
+            points={mapPoints}
+            selectedId={selectedId}
+            userCoordinate={coordinate}
+            initialZoom={13}
+            height={300}
+            onSelect={(id) => {
+              const place = PLACES.find((item) => item.id === id);
+              if (place) focusPlace(place);
+            }}
+          />
+          <View style={styles.mapLabel} pointerEvents="none">
+            <Text style={styles.mapLabelText}>OPENSTREETMAP · UYGULAMA İÇİ</Text>
           </View>
         </View>
 
         <View style={styles.listHeader}>
-          <Text style={styles.listEyebrow}>SIRALANMIŞ MEKÂNLAR</Text>
+          <Text style={styles.listEyebrow}>MESAFEYE GÖRE</Text>
           <Text style={styles.listCount}>{PLACES.length}</Text>
         </View>
 
         <View style={styles.list}>
           {sortedPlaces.map(({ place, km }, index) => {
             const selected = place.id === selectedId;
-
             return (
               <Pressable
                 key={place.id}
@@ -188,7 +184,6 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
                 <View style={styles.rank}>
                   <Text style={styles.rankText}>{index + 1}</Text>
                 </View>
-
                 <View style={styles.cardCopy}>
                   <Text style={styles.placeName}>{place.name}</Text>
                   <Text style={styles.placeMeta}>
@@ -199,7 +194,6 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
                     {place.hook}
                   </Text>
                 </View>
-
                 <Pressable
                   style={styles.openButton}
                   onPress={() => onOpenPlace(place)}
@@ -214,9 +208,8 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
         <View style={styles.notePanel}>
           <Text style={styles.noteTitle}>Konum nasıl kullanılıyor?</Text>
           <Text style={styles.noteBody}>
-            Konum yalnızca yakındaki kayıtların mesafesini hesaplamak için
-            cihazda kullanılır. Bu ekran kendi haritasını gösterir; başka bir
-            harita uygulamasına yönlendirme yapmaz.
+            Konum yalnızca mesafe hesabı için cihazda kullanılır. Harita
+            OpenStreetMap karo verisini doğrudan ZAMANALTI içinde gösterir.
           </Text>
         </View>
       </ScrollView>
@@ -225,14 +218,8 @@ export function NearbyScreen({ onBack, onOpenPlace }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    paddingHorizontal: 18,
-    paddingTop: 4,
-  },
+  root: { flex: 1, backgroundColor: COLORS.background },
+  content: { paddingHorizontal: 18, paddingTop: 4 },
   topRow: {
     minHeight: 60,
     flexDirection: 'row',
@@ -249,23 +236,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  back: {
-    color: COLORS.text,
-    fontSize: 30,
-    marginTop: -4,
-  },
-  brandBlock: {
-    alignItems: 'center',
-  },
+  back: { color: COLORS.text, fontSize: 30, marginTop: -4 },
+  brandBlock: { alignItems: 'center' },
   brand: {
     color: COLORS.text,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.5,
   },
-  brandAccent: {
-    color: COLORS.lime,
-  },
+  brandAccent: { color: COLORS.lime },
   brandSub: {
     color: COLORS.lime,
     fontSize: 7,
@@ -283,10 +262,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  locationButtonText: {
-    color: COLORS.lime,
-    fontSize: 18,
-  },
+  locationButtonText: { color: COLORS.lime, fontSize: 18 },
   eyebrow: {
     color: COLORS.lime,
     fontSize: 9,
@@ -326,15 +302,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.muted,
     marginRight: 10,
   },
-  statusDotReady: {
-    backgroundColor: COLORS.lime,
-  },
-  statusDotError: {
-    backgroundColor: COLORS.orange,
-  },
-  statusCopy: {
-    flex: 1,
-  },
+  statusDotReady: { backgroundColor: COLORS.lime },
+  statusDotError: { backgroundColor: COLORS.orange },
+  statusCopy: { flex: 1 },
   statusLabel: {
     color: COLORS.cyan,
     fontSize: 7,
@@ -361,6 +331,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.8,
   },
+  collectionNotice: {
+    marginTop: 10,
+    borderRadius: 17,
+    padding: 13,
+    backgroundColor: 'rgba(255,106,0,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.25)',
+  },
+  collectionNoticeTitle: {
+    color: COLORS.orange,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  collectionNoticeText: {
+    color: COLORS.muted,
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 5,
+  },
   mapFrame: {
     height: 300,
     borderRadius: 28,
@@ -370,13 +359,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(67,215,255,0.32)',
     backgroundColor: COLORS.surface,
   },
-  map: {
-    flex: 1,
-  },
   mapLabel: {
     position: 'absolute',
     left: 12,
-    bottom: 12,
+    bottom: 30,
     minHeight: 28,
     borderRadius: 14,
     paddingHorizontal: 10,
@@ -404,14 +390,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.6,
   },
-  listCount: {
-    color: COLORS.lime,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  list: {
-    gap: 9,
-  },
+  listCount: { color: COLORS.lime, fontSize: 18, fontWeight: '900' },
+  list: { gap: 9 },
   card: {
     minHeight: 110,
     borderRadius: RADII.lg,
@@ -435,25 +415,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rankText: {
-    color: COLORS.cyan,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  cardCopy: {
-    flex: 1,
-    paddingHorizontal: 11,
-  },
-  placeName: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  placeMeta: {
-    color: COLORS.muted,
-    fontSize: 9,
-    marginTop: 3,
-  },
+  rankText: { color: COLORS.cyan, fontSize: 11, fontWeight: '900' },
+  cardCopy: { flex: 1, paddingHorizontal: 11 },
+  placeName: { color: COLORS.text, fontSize: 15, fontWeight: '900' },
+  placeMeta: { color: COLORS.muted, fontSize: 9, marginTop: 3 },
   placeHook: {
     color: '#AAB5BA',
     fontSize: 9,
@@ -482,11 +447,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(203,255,0,0.2)',
     backgroundColor: 'rgba(203,255,0,0.035)',
   },
-  noteTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
+  noteTitle: { color: COLORS.text, fontSize: 15, fontWeight: '900' },
   noteBody: {
     color: COLORS.muted,
     fontSize: 10,
