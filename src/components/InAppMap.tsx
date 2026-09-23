@@ -276,7 +276,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#071016',
   },
   tiles: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     overflow: 'hidden',
   },
   tile: {
@@ -285,7 +289,11 @@ const styles = StyleSheet.create({
     height: TILE_SIZE,
   },
   mapTint: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(2,8,12,0.18)',
   },
   routeLine: {
