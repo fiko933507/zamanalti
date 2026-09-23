@@ -42,19 +42,41 @@ export function DeepModeScreen({ place, onBack }: Props) {
         const voices = await Speech.getAvailableVoicesAsync();
         if (!mounted) return;
 
-        const turkishVoice =
-          voices.find((voice) =>
-            voice.language?.toLocaleLowerCase().startsWith('tr-tr'),
-          ) ??
-          voices.find((voice) =>
+        const turkishVoices = voices
+          .filter((voice) =>
             voice.language?.toLocaleLowerCase().startsWith('tr'),
-          );
+          )
+          .sort((a, b) => {
+            const score = (voice: (typeof voices)[number]) => {
+              const haystack = `${voice.name} ${voice.identifier}`.toLocaleLowerCase();
+              let value = 0;
+              if (String(voice.quality).toLocaleLowerCase() === 'enhanced') {
+                value += 100;
+              }
+              if (haystack.includes('network')) value += 50;
+              if (haystack.includes('neural')) value += 45;
+              if (haystack.includes('natural')) value += 40;
+              if (haystack.includes('google')) value += 20;
+              if (voice.language?.toLocaleLowerCase().startsWith('tr-tr')) {
+                value += 10;
+              }
+              return value;
+            };
+
+            return score(b) - score(a);
+          });
+
+        const turkishVoice = turkishVoices[0];
 
         if (turkishVoice) {
           setVoiceId(turkishVoice.identifier);
-          setVoiceLabel('Türkçe sistem sesi hazır');
+          const quality =
+            String(turkishVoice.quality).toLocaleLowerCase() === 'enhanced'
+              ? 'gelişmiş'
+              : 'standart';
+          setVoiceLabel(`${turkishVoice.name} · ${quality} Türkçe ses`);
         } else {
-          setVoiceLabel('Varsayılan cihaz sesi kullanılacak');
+          setVoiceLabel('Türkçe ses bulunamadı · varsayılan ses kullanılacak');
         }
       } catch {
         if (mounted) {
@@ -77,7 +99,7 @@ export function DeepModeScreen({ place, onBack }: Props) {
   };
 
   const startSpeech = async () => {
-    const narration = `${place.name}. ${currentChapter.title}. ${currentChapter.body}`;
+    const narration = `${place.name}. ... ${currentChapter.title}. ... ${currentChapter.body}`;
 
     setSpeechError(null);
     await Speech.stop();
@@ -85,8 +107,8 @@ export function DeepModeScreen({ place, onBack }: Props) {
     Speech.speak(narration, {
       language: 'tr-TR',
       voice: voiceId,
-      rate: 0.86,
-      pitch: 1,
+      rate: 0.92,
+      pitch: 0.97,
       onStart: () => setPlaying(true),
       onDone: () => setPlaying(false),
       onStopped: () => setPlaying(false),
@@ -196,7 +218,7 @@ export function DeepModeScreen({ place, onBack }: Props) {
         <View style={styles.voiceStatus}>
           <View style={styles.voiceStatusDot} />
           <View style={styles.voiceStatusCopy}>
-            <Text style={styles.voiceStatusTitle}>SES MOTORU</Text>
+            <Text style={styles.voiceStatusTitle}>DOĞAL SES SEÇİMİ</Text>
             <Text style={styles.voiceStatusText}>{voiceLabel}</Text>
           </View>
         </View>
@@ -328,9 +350,10 @@ export function DeepModeScreen({ place, onBack }: Props) {
             Ses anlatır, ekran bağlamı gösterir.
           </Text>
           <Text style={styles.noScreenBody}>
-            Bu sürüm telefonun Türkçe metin-okuma motorunu kullanır. İçerik boş
-            değildir; seçilen bölümün tam metni yukarıdaki oynatıcıda görünür ve
-            aynı metin seslendirilir.
+            Uygulama cihazdaki Türkçe sesler arasında gelişmiş, ağ tabanlı veya
+            doğal ses etiketli olanları önceliklendirir. Cihazında yalnızca eski
+            sistem sesi varsa ses yine daha robotik gelebilir; seçilen bölümün
+            tam metni her zaman ekranda görünür.
           </Text>
         </View>
       </ScrollView>
