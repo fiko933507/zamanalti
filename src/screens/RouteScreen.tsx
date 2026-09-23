@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,8 +6,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { InAppMap } from '../components/InAppMap';
 import { PLACES, type Place } from '../data/places';
 import { COLORS, RADII } from '../theme';
 
@@ -16,34 +16,36 @@ type Props = {
   onOpenPlace: (place: Place) => void;
 };
 
-const ISTANBUL_REGION = {
+const ISTANBUL_CENTER = {
   latitude: 41.019,
   longitude: 28.965,
-  latitudeDelta: 0.065,
-  longitudeDelta: 0.065,
 };
 
 export function RouteScreen({ onBack, onOpenPlace }: Props) {
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView | null>(null);
   const [selectedId, setSelectedId] = useState(PLACES[0]!.id);
+  const [mapCenter, setMapCenter] = useState(ISTANBUL_CENTER);
 
   const selectedPlace = useMemo(
     () => PLACES.find((place) => place.id === selectedId) ?? PLACES[0]!,
     [selectedId],
   );
 
+  const mapPoints = useMemo(
+    () =>
+      PLACES.map((place) => ({
+        id: place.id,
+        label: place.name,
+        glyph: place.glyph,
+        coordinate: place.coordinates,
+        tone: 'orange' as const,
+      })),
+    [],
+  );
+
   const focusPlace = (place: Place) => {
     setSelectedId(place.id);
-    mapRef.current?.animateToRegion(
-      {
-        latitude: place.coordinates.latitude,
-        longitude: place.coordinates.longitude,
-        latitudeDelta: 0.017,
-        longitudeDelta: 0.017,
-      },
-      450,
-    );
+    setMapCenter({ ...place.coordinates });
   };
 
   return (
@@ -74,47 +76,32 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
           </View>
         </View>
 
-        <Text style={styles.eyebrow}>İSTANBUL · UYGULAMA İÇİ ROTA</Text>
+        <Text style={styles.eyebrow}>İSTANBUL · TAMAMEN UYGULAMA İÇİNDE</Text>
         <Text style={styles.title}>Şehri tarihin içinden yürü.</Text>
         <Text style={styles.subtitle}>
-          Artık başka bir harita uygulamasına çıkmıyorsun. Rota, duraklar ve
-          mekân katmanları ZAMANALTI içinde kalıyor.
+          Harita, duraklar ve tarih katmanları ZAMANALTI içinde kalır. Bu
+          ekranda Google Maps, Apple Maps veya başka bir navigasyon uygulaması
+          açılmaz.
         </Text>
 
         <View style={styles.mapFrame}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={ISTANBUL_REGION}
-            mapType="standard"
-            toolbarEnabled={false}
-            showsCompass={false}
-            showsScale={false}
-          >
-            <Polyline
-              coordinates={PLACES.map((place) => place.coordinates)}
-              strokeColor={COLORS.orange}
-              strokeWidth={4}
-              lineDashPattern={[9, 7]}
-            />
-
-            {PLACES.map((place, index) => (
-              <Marker
-                key={place.id}
-                coordinate={place.coordinates}
-                title={place.name}
-                description={`${index + 1}. durak · ${place.district}`}
-                pinColor={place.id === selectedId ? COLORS.lime : COLORS.orange}
-                onPress={() => setSelectedId(place.id)}
-              />
-            ))}
-          </MapView>
-
-          <View style={styles.mapOverlayTop}>
-            <Text style={styles.mapOverlayKicker}>HİKÂYE ROTASI</Text>
+          <InAppMap
+            center={mapCenter}
+            points={mapPoints}
+            selectedId={selectedId}
+            routeCoordinates={PLACES.map((place) => place.coordinates)}
+            initialZoom={13}
+            height={330}
+            onSelect={(id) => {
+              const place = PLACES.find((item) => item.id === id);
+              if (place) focusPlace(place);
+            }}
+          />
+          <View style={styles.mapOverlayTop} pointerEvents="none">
+            <Text style={styles.mapOverlayKicker}>ZAMAN ROTASI</Text>
             <Text style={styles.mapOverlayText}>
-              Turuncu çizgi fiziksel yol tarifi değil, zaman duraklarının
-              uygulama içindeki hikâye bağlantısıdır.
+              Turuncu çizgi, mekânların hikâye sırasını gösterir. + / − ile
+              haritayı yakınlaştırabilirsin.
             </Text>
           </View>
         </View>
@@ -140,7 +127,7 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
             style={styles.openSelected}
             onPress={() => onOpenPlace(selectedPlace)}
           >
-            <Text style={styles.openSelectedText}>KATMANI AÇ</Text>
+            <Text style={styles.openSelectedText}>AÇ</Text>
           </Pressable>
         </View>
 
@@ -181,7 +168,6 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
                       <View style={styles.placeGlyph}>
                         <Text style={styles.placeGlyphText}>{place.glyph}</Text>
                       </View>
-
                       <View style={styles.stopCopy}>
                         <Text style={styles.placeName}>{place.name}</Text>
                         <Text style={styles.placeMeta}>
@@ -198,10 +184,9 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
                         onPress={() => focusPlace(place)}
                       >
                         <Text style={styles.secondaryActionText}>
-                          HARİTADA GÖR
+                          HARİTADA ODAKLA
                         </Text>
                       </Pressable>
-
                       <Pressable
                         style={styles.primaryAction}
                         onPress={() => onOpenPlace(place)}
@@ -218,13 +203,12 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
         </View>
 
         <View style={styles.notePanel}>
-          <Text style={styles.noteKicker}>NEDEN DIŞARI ÇIKMIYOR?</Text>
-          <Text style={styles.noteTitle}>Rota artık ZAMANALTI’nın parçası.</Text>
+          <Text style={styles.noteKicker}>HARİTA MOTORU</Text>
+          <Text style={styles.noteTitle}>Google Maps bağımlılığı kaldırıldı.</Text>
           <Text style={styles.noteBody}>
-            Bu sürüm, durakların coğrafi konumunu ve aralarındaki hikâye
-            bağlantısını uygulama içinde gösterir. Gerçek sokak yönlendirmesi
-            için ileride uygulama içine bir rota motoru bağlanabilir; şimdilik
-            kullanıcı Google Maps ya da başka bir uygulamaya gönderilmez.
+            Harita OpenStreetMap karo verilerini ZAMANALTI arayüzünün içinde
+            gösterir. Böylece boş Google haritası ve dış uygulamaya atlama
+            sorunu ortadan kalkar.
           </Text>
         </View>
       </ScrollView>
@@ -233,14 +217,8 @@ export function RouteScreen({ onBack, onOpenPlace }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    paddingHorizontal: 18,
-    paddingTop: 4,
-  },
+  root: { flex: 1, backgroundColor: COLORS.background },
+  content: { paddingHorizontal: 18, paddingTop: 4 },
   orangeGlow: {
     position: 'absolute',
     width: 340,
@@ -267,23 +245,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  back: {
-    color: COLORS.text,
-    fontSize: 30,
-    marginTop: -4,
-  },
-  brandBlock: {
-    alignItems: 'center',
-  },
+  back: { color: COLORS.text, fontSize: 30, marginTop: -4 },
+  brandBlock: { alignItems: 'center' },
   brand: {
     color: COLORS.text,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.5,
   },
-  brandAccent: {
-    color: COLORS.lime,
-  },
+  brandAccent: { color: COLORS.lime },
   brandSub: {
     color: COLORS.orange,
     fontSize: 7,
@@ -301,11 +271,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  countText: {
-    color: COLORS.orange,
-    fontSize: 13,
-    fontWeight: '900',
-  },
+  countText: { color: COLORS.orange, fontSize: 13, fontWeight: '900' },
   eyebrow: {
     color: COLORS.orange,
     fontSize: 9,
@@ -336,17 +302,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,106,0,0.34)',
     backgroundColor: COLORS.surface,
   },
-  map: {
-    flex: 1,
-  },
   mapOverlayTop: {
     position: 'absolute',
     left: 12,
-    right: 12,
+    right: 58,
     top: 12,
     borderRadius: 16,
-    padding: 11,
-    backgroundColor: 'rgba(2,6,9,0.82)',
+    padding: 10,
+    backgroundColor: 'rgba(2,6,9,0.84)',
     borderWidth: 1,
     borderColor: 'rgba(255,106,0,0.32)',
   },
@@ -358,8 +321,8 @@ const styles = StyleSheet.create({
   },
   mapOverlayText: {
     color: '#B4C0C6',
-    fontSize: 9,
-    lineHeight: 14,
+    fontSize: 8,
+    lineHeight: 13,
     marginTop: 4,
   },
   selectedPanel: {
@@ -382,25 +345,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectedIndexText: {
-    color: COLORS.lime,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  selectedCopy: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  selectedName: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  selectedMeta: {
-    color: COLORS.muted,
-    fontSize: 8,
-    marginTop: 3,
-  },
+  selectedIndexText: { color: COLORS.lime, fontSize: 11, fontWeight: '900' },
+  selectedCopy: { flex: 1, paddingHorizontal: 10 },
+  selectedName: { color: COLORS.text, fontSize: 15, fontWeight: '900' },
+  selectedMeta: { color: COLORS.muted, fontSize: 8, marginTop: 3 },
   selectedHook: {
     color: '#AAB5BA',
     fontSize: 8,
@@ -408,26 +356,16 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   openSelected: {
-    minWidth: 74,
+    width: 52,
     height: 38,
     borderRadius: 19,
     backgroundColor: COLORS.lime,
-    paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  openSelectedText: {
-    color: '#050700',
-    fontSize: 7,
-    fontWeight: '900',
-    letterSpacing: 0.7,
-  },
-  routeLine: {
-    marginTop: 24,
-  },
-  stopWrap: {
-    position: 'relative',
-  },
+  openSelectedText: { color: '#050700', fontSize: 8, fontWeight: '900' },
+  routeLine: { marginTop: 24 },
+  stopWrap: { position: 'relative' },
   connector: {
     position: 'absolute',
     left: 19,
@@ -441,11 +379,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 18,
   },
-  stopRail: {
-    width: 40,
-    alignItems: 'center',
-    paddingTop: 10,
-  },
+  stopRail: { width: 40, alignItems: 'center', paddingTop: 10 },
   stopNode: {
     width: 30,
     height: 30,
@@ -461,14 +395,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.lime,
     backgroundColor: 'rgba(203,255,0,0.09)',
   },
-  stopNodeText: {
-    color: COLORS.orange,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  stopNodeTextSelected: {
-    color: COLORS.lime,
-  },
+  stopNodeText: { color: COLORS.orange, fontSize: 10, fontWeight: '900' },
+  stopNodeTextSelected: { color: COLORS.lime },
   stopCard: {
     flex: 1,
     borderRadius: RADII.lg,
@@ -478,13 +406,8 @@ const styles = StyleSheet.create({
     padding: 15,
     marginLeft: 8,
   },
-  stopCardSelected: {
-    borderColor: 'rgba(203,255,0,0.38)',
-  },
-  stopTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  stopCardSelected: { borderColor: 'rgba(203,255,0,0.38)' },
+  stopTop: { flexDirection: 'row', alignItems: 'center' },
   placeGlyph: {
     width: 42,
     height: 42,
@@ -495,36 +418,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  placeGlyphText: {
-    color: COLORS.cyan,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  stopCopy: {
-    flex: 1,
-    paddingLeft: 11,
-  },
-  placeName: {
-    color: COLORS.text,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  placeMeta: {
-    color: COLORS.muted,
-    fontSize: 9,
-    marginTop: 3,
-  },
+  placeGlyphText: { color: COLORS.cyan, fontSize: 15, fontWeight: '900' },
+  stopCopy: { flex: 1, paddingLeft: 11 },
+  placeName: { color: COLORS.text, fontSize: 17, fontWeight: '900' },
+  placeMeta: { color: COLORS.muted, fontSize: 9, marginTop: 3 },
   placeHook: {
     color: '#A8B4BA',
     fontSize: 11,
     lineHeight: 17,
     marginTop: 12,
   },
-  stopActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-  },
+  stopActions: { flexDirection: 'row', gap: 8, marginTop: 14 },
   secondaryAction: {
     flex: 1,
     minHeight: 40,
@@ -536,9 +440,9 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     color: COLORS.cyan,
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
   },
   primaryAction: {
     flex: 1,
@@ -556,11 +460,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.8,
   },
-  primaryArrow: {
-    color: '#050700',
-    fontSize: 13,
-    marginLeft: 6,
-  },
+  primaryArrow: { color: '#050700', fontSize: 13, marginLeft: 6 },
   notePanel: {
     marginTop: 8,
     borderRadius: RADII.lg,
