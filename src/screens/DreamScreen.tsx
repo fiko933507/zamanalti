@@ -90,6 +90,64 @@ const analyseDream = (text: string): DreamMotif[] => {
   ];
 };
 
+const interpretDream = (text: string, motifs: DreamMotif[]) => {
+  const normalized = text.toLocaleLowerCase('tr-TR');
+  const notes: string[] = [];
+
+  if (motifs.some((item) => item.id === 'water')) {
+    notes.push(
+      'Su motifi, sembolik okumada duyguların akışı, değişim ve birikmiş düşüncelerin hareket etmesiyle ilişkilendirilebilir.',
+    );
+  }
+  if (motifs.some((item) => item.id === 'flight')) {
+    notes.push(
+      'Uçuş motifi; özgürlük isteği, sınırları aşma arzusu veya gündelik baskılardan uzaklaşma ihtiyacını çağrıştırabilir.',
+    );
+  }
+  if (motifs.some((item) => item.id === 'city')) {
+    notes.push(
+      'Şehir ve sokaklar; yön bulma, geçmiş deneyimler, seçimler ve hayatındaki farklı yolların aynı anda zihinde yer almasını simgeleyebilir.',
+    );
+  }
+  if (motifs.some((item) => item.id === 'night')) {
+    notes.push(
+      'Gece, ay ve karanlık imgeleri; belirsizlik, merak, içe dönme veya henüz netleşmemiş bir konuyla yüzleşme hissini temsil edebilir.',
+    );
+  }
+  if (motifs.some((item) => item.id === 'forest')) {
+    notes.push(
+      'Doğa ve orman imgeleri; yenilenme, yalnız kalma ihtiyacı veya daha sade ve güvenli bir alana dönme isteğini düşündürebilir.',
+    );
+  }
+  if (motifs.some((item) => item.id === 'people')) {
+    notes.push(
+      'Rüyadaki insanlar çoğu zaman ilişkiler, özlem, destek veya çözülmemiş sosyal duygular için sembolik bir sahne oluşturabilir.',
+    );
+  }
+
+  if (/(kaç|kovala|düş|kaybol|kork|karanlık)/.test(normalized)) {
+    notes.push(
+      'Rüyadaki gerilim işaretleri, kesin bir anlam taşımak zorunda değildir; yakın dönemdeki stres, belirsizlik veya yoğun düşünceler rüya sahnesine karışmış olabilir.',
+    );
+  }
+
+  if (/(gül|mutlu|ışık|güneş|rahat|huzur)/.test(normalized)) {
+    notes.push(
+      'Olumlu ve aydınlık imgeler, zihninin güven, rahatlama veya umut hissini sahneye taşıdığını düşündürebilir.',
+    );
+  }
+
+  return {
+    title:
+      motifs.length > 0
+        ? `${motifs.map((item) => item.label).join(' · ')} eksenli rüya`
+        : 'Sembolik rüya okuması',
+    body:
+      notes.slice(0, 3).join(' ') ||
+      'Rüyan tek bir sembole indirgenemiyor. Mekân, his ve tekrar eden ayrıntılar birlikte düşünülünce kişisel çağrışımlar daha anlamlı olabilir.',
+  };
+};
+
 export function DreamScreen({ onBack }: Props) {
   const insets = useSafeAreaInsets();
   const motion = useRef(new Animated.Value(0)).current;
@@ -100,6 +158,10 @@ export function DreamScreen({ onBack }: Props) {
   const [saved, setSaved] = useState(false);
 
   const motifs = useMemo(() => analyseDream(renderedDream), [renderedDream]);
+  const interpretation = useMemo(
+    () => interpretDream(renderedDream, motifs),
+    [renderedDream, motifs],
+  );
   const seed = useMemo(() => hashText(renderedDream), [renderedDream]);
 
   const hasMotif = (id: string) => motifs.some((motif) => motif.id === id);
@@ -257,6 +319,45 @@ export function DreamScreen({ onBack }: Props) {
                 ]}
               />
 
+              <View style={styles.horizon} />
+              <View style={styles.groundPlane}>
+                {[0, 1, 2, 3, 4].map((index) => (
+                  <View
+                    key={`grid-h-${index}`}
+                    style={[
+                      styles.groundGridHorizontal,
+                      { top: 18 + index * 26, borderColor: hueA },
+                    ]}
+                  />
+                ))}
+                {[0, 1, 2, 3, 4].map((index) => (
+                  <View
+                    key={`grid-v-${index}`}
+                    style={[
+                      styles.groundGridVertical,
+                      {
+                        left: 18 + index * 40,
+                        borderColor: index % 2 === 0 ? hueA : hueB,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+
+              {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+                <View
+                  key={`star-${index}`}
+                  style={[
+                    styles.star,
+                    {
+                      left: 24 + ((seed >> index) % 205),
+                      top: 18 + ((seed >> (index + 3)) % 78),
+                      backgroundColor: index % 2 === 0 ? hueA : hueB,
+                    },
+                  ]}
+                />
+              ))}
+
               {hasMotif('night') && (
                 <View
                   style={[
@@ -352,16 +453,15 @@ export function DreamScreen({ onBack }: Props) {
         </View>
 
         <View style={styles.interpretation}>
-          <Text style={styles.interpretationKicker}>SAHNE MANTIĞI</Text>
-          <Text style={styles.interpretationTitle}>
-            {motifs.map((item) => item.label).join(' · ')}
-          </Text>
-          <Text style={styles.interpretationBody}>
-            Bu prototip rüyayı psikolojik olarak yorumlamaz. Metindeki görsel
-            motifleri alıp 3B perspektifli bir sahne kompozisyonuna dönüştürür.
-            Daha sonraki sürümde bu sahne üretken görsel/3B model servisine
-            bağlanabilir.
-          </Text>
+          <Text style={styles.interpretationKicker}>RÜYA YORUMU · SEMBOLİK OKUMA</Text>
+          <Text style={styles.interpretationTitle}>{interpretation.title}</Text>
+          <Text style={styles.interpretationBody}>{interpretation.body}</Text>
+          <View style={styles.interpretationNote}>
+            <Text style={styles.interpretationNoteText}>
+              Bu yorum eğlence ve öz-farkındalık amaçlı sembolik bir okumadır;
+              psikolojik tanı veya kesin anlam iddiası değildir.
+            </Text>
+          </View>
         </View>
 
         <Pressable style={styles.saveButton} onPress={() => void saveDream()}>
@@ -586,6 +686,50 @@ const styles = StyleSheet.create({
     opacity: 0.25,
     transform: [{ rotateZ: '45deg' }, { scale: 0.78 }],
   },
+  horizon: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    top: 119,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  groundPlane: {
+    position: 'absolute',
+    width: 228,
+    height: 142,
+    bottom: 14,
+    overflow: 'hidden',
+    opacity: 0.5,
+    transform: [
+      { perspective: 520 },
+      { rotateX: '62deg' },
+      { scaleX: 1.04 },
+    ],
+  },
+  groundGridHorizontal: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 0,
+    borderTopWidth: 1,
+    opacity: 0.5,
+  },
+  groundGridVertical: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 0,
+    borderLeftWidth: 1,
+    opacity: 0.35,
+  },
+  star: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    opacity: 0.8,
+  },
   moon: {
     position: 'absolute',
     width: 68,
@@ -787,6 +931,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 16,
     marginTop: 7,
+  },
+  interpretationNote: {
+    marginTop: 12,
+    borderRadius: 14,
+    padding: 10,
+    backgroundColor: 'rgba(164,124,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(164,124,255,0.2)',
+  },
+  interpretationNoteText: {
+    color: '#9FAAB0',
+    fontSize: 8,
+    lineHeight: 13,
   },
   saveButton: {
     marginTop: 14,
