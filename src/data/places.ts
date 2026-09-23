@@ -47,7 +47,7 @@ export const PLACES: Place[] = [
     hook: 'Bir Ceneviz gözetleme kulesinden İstanbul’un simge müzelerinden birine uzanan yaklaşık yedi yüzyıllık dönüşüm.',
     glyph: 'G',
     image: {
-      url: 'https://upload.wikimedia.org/wikipedia/commons/2/27/Galata_Tower_-_Istanbul.jpg',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Galata_Tower_-_Istanbul.jpg/960px-Galata_Tower_-_Istanbul.jpg',
       credit: 'İlke.bahceci / Wikimedia Commons',
       license: 'CC0 1.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:Galata_Tower_-_Istanbul.jpg',
@@ -136,7 +136,7 @@ export const PLACES: Place[] = [
     hook: '6. yüzyıldan bugüne ibadet, imparatorluk, mimarlık ve koruma tarihinin aynı yapıdaki kesişimi.',
     glyph: 'A',
     image: {
-      url: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Exterior_of_Hagia_Sophia_%281%29_-_Istanbul_%282022%29.jpg',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Exterior_of_Hagia_Sophia_%281%29_-_Istanbul_%282022%29.jpg/960px-Exterior_of_Hagia_Sophia_%281%29_-_Istanbul_%282022%29.jpg',
       credit: 'ImanFakhri / Wikimedia Commons',
       license: 'CC BY-SA 4.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:Exterior_of_Hagia_Sophia_(1)_-_Istanbul_(2022).jpg',
@@ -225,7 +225,7 @@ export const PLACES: Place[] = [
     hook: 'Şehrin altında su, devşirme taşlar ve 336 sütunla kurulan 6. yüzyıl mühendisliği.',
     glyph: 'Y',
     image: {
-      url: 'https://upload.wikimedia.org/wikipedia/commons/4/44/CisternIstanbul.jpg',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/CisternIstanbul.jpg/960px-CisternIstanbul.jpg',
       credit: 'Spiderone / Wikimedia Commons',
       license: 'Public domain',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:CisternIstanbul.jpg',
@@ -314,7 +314,7 @@ export const PLACES: Place[] = [
     hook: 'Haliç kıyısında Yahudi, Rum ve Müslüman toplulukların izlerini taşıyan yaşayan mahalle dokusu.',
     glyph: 'B',
     image: {
-      url: 'https://upload.wikimedia.org/wikipedia/commons/3/3c/IstanbulBalatStreet.jpg',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/IstanbulBalatStreet.jpg/960px-IstanbulBalatStreet.jpg',
       credit: 'Mondo79 / Wikimedia Commons',
       license: 'CC BY 2.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:IstanbulBalatStreet.jpg',
