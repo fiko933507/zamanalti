@@ -388,6 +388,18 @@ export function DreamScreen({ onBack }: Props) {
                         },
                       ]}
                     >
+                      <View
+                        style={[
+                          styles.towerSide,
+                          {
+                            backgroundColor:
+                              index % 2 === 0
+                                ? 'rgba(67,215,255,0.18)'
+                                : 'rgba(164,124,255,0.18)',
+                          },
+                        ]}
+                      />
+                      <View style={styles.towerRoof} />
                       <View style={styles.window} />
                       <View style={styles.window} />
                     </View>
@@ -768,6 +780,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(4,12,18,0.92)',
     padding: 5,
     justifyContent: 'space-around',
+    overflow: 'visible',
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 7,
+    elevation: 6,
+  },
+  towerSide: {
+    position: 'absolute',
+    right: -8,
+    top: 5,
+    bottom: -1,
+    width: 8,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.12)',
+    transform: [{ skewY: '-28deg' }],
+  },
+  towerRoof: {
+    position: 'absolute',
+    top: -6,
+    left: 3,
+    width: 22,
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    transform: [{ skewX: '-34deg' }],
   },
   window: {
     height: 4,
