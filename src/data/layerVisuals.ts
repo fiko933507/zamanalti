@@ -199,10 +199,42 @@ export function getLayerVisual(placeId: string, year: string) {
   return LAYER_VISUALS[visualKey(placeId, year)] ?? null;
 }
 
+const DIRECT_VISUAL_URLS: Record<string, string> = {
+  'The Galata Tower (Buondelmonti, BNF).jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/7/7c/The_Galata_Tower_(Buondelmonti,_BNF).jpg',
+  'Galata Tower.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/f/fc/Galata_Tower.jpg',
+  'Galata Tower - Istanbul.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/2/27/Galata_Tower_-_Istanbul.jpg',
+  'Reconstruction drawing of the Hagia Sophia (02).jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/2/24/Reconstruction_drawing_of_the_Hagia_Sophia_(02).jpg',
+  'Façade principale de Ste Sophie, prise de la cour du médressé - Fossati Gaspard - 1852.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/1/11/Fa%C3%A7ade_principale_de_Ste_Sophie,_prise_de_la_cour_du_m%C3%A9dress%C3%A9_-_Fossati_Gaspard_-_1852.jpg',
+  'Hagia Sophia. Fortepan 76187.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/6/6d/Hagia_Sophia._Fortepan_76187.jpg',
+  'Exterior of Hagia Sophia (1) - Istanbul (2022).jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/f/f1/Exterior_of_Hagia_Sophia_(1)_-_Istanbul_(2022).jpg',
+  'Yere-Batan Sarai, Constantinople - Walsh Robert & Allom Thomas - 1836.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/c/c1/Yere-Batan_Sarai,_Constantinople_-_Walsh_Robert_%26_Allom_Thomas_-_1836.jpg',
+  'CisternIstanbul.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/4/44/CisternIstanbul.jpg',
+  "27 Balat - Corne d'Or - J. Pervititch - btv1b10100712w.jpg":
+    "https://upload.wikimedia.org/wikipedia/commons/8/8d/27_Balat_-_Corne_d'Or_-_J._Pervititch_-_btv1b10100712w.jpg",
+  "28 Balat - Corne d'Or - J. Pervititch - btv1b10100713b.jpg":
+    "https://upload.wikimedia.org/wikipedia/commons/3/31/28_Balat_-_Corne_d'Or_-_J._Pervititch_-_btv1b10100713b.jpg",
+  'Balat.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/1/1e/Balat.jpg',
+  'IstanbulBalatStreet.jpg':
+    'https://upload.wikimedia.org/wikipedia/commons/3/3c/IstanbulBalatStreet.jpg',
+};
+
 export function getLayerVisualUrl(visual: LayerVisual) {
-  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(
-    visual.fileName,
-  )}?width=1400`;
+  return (
+    DIRECT_VISUAL_URLS[visual.fileName] ??
+    `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(
+      visual.fileName,
+    )}`
+  );
 }
 
 export function getLayerVisualKindLabel(kind: LayerVisualKind) {
